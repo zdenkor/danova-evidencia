@@ -7,6 +7,7 @@ from database import (get_db, init_db, set_db_path, DEFAULT_DB_PATH, get_agendy_
                       get_sablony, get_sablona, pridat_sablonu, upravit_sablonu, zmazat_sablonu,
                       get_prijem_polozky, pridat_prijem_polozku, upravit_prijem_polozku, zmazat_prijem_polozku,
                       get_vydavok_polozky, pridat_vydavok_polozku, upravit_vydavok_polozku, zmazat_vydavok_polozku)
+from migrations import get_current_version
 from datetime import datetime, date
 import calendar
 import re
@@ -190,6 +191,9 @@ def inject_globals():
     # Nastavenia zobrazenia
     zobrazenie = get_zobrazenie()
 
+    # Database version
+    db_verzia = get_current_version(DEFAULT_DB_PATH)
+
     return {
         'now': datetime.now(),
         'aktualna_agenda': agenda,
@@ -201,7 +205,8 @@ def inject_globals():
         'format_datum_dlhy': format_datum_dlhy,
         'MESIACE_SK': MESIACE_SK,
         'MESIACE_SK_KRATKE': MESIACE_SK_KRATKE,
-        'zobrazenie': zobrazenie
+        'zobrazenie': zobrazenie,
+        'db_verzia': db_verzia
     }
 
 
