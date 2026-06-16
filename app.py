@@ -11,6 +11,7 @@ from database import (get_db, init_db, set_db_path, DEFAULT_DB_PATH, get_agendy_
                       get_typy_dokladov_prijem, get_typy_dokladov_vydavok, get_legal_limit,
                       update_system_catalog)
 from migrations import get_current_version
+from import_export import export_data, import_data, validate_import
 from datetime import datetime, date
 import calendar
 import re
@@ -2122,6 +2123,109 @@ def api_zobrazenie_post():
     data = request.get_json() or {}
     update_zobrazenie(data)
     return jsonify({'status': 'ok'})
+
+
+# ═══════════════════════════════════════════════════════════════
+# IMPORT / EXPORT ROUTES
+# ═══════════════════════════════════════════════════════════════
+
+@app.route('/export-json')
+def export_json():
+    """Export všetkých dát do JSON formátu."""
+    from database import DB_PATH
+    db_verzia = get_current_version(DB_PATH) or 'unknown'
+    
+    export = export_data(DB_PATH, db_verzia)
+    
+    filename = f"danova-evidencia-export-{datetime.now().strftime('%Y%m%d-%H%M%S')}.json"
+    
+    response = app.response_class(
+        response=json.dumps(export, indent=2, ensure_ascii=False, default=str),
+        status=200,
+        mimetype='application/json'
+    )
+    response.headers['Content-Disposition'] = f'attachment; filename={filename}'
+    return response
+
+
+@app.route('/import-json', methods=['POST'])
+def import_json():
+    """Import dát z JSON formátu."""
+    from database import DB_PATH
+    
+    if 'file' not in request.files:
+        flash('Žiadny súbor nebol vybraný', 'danger')
+        return redirect(url_for('nastavenia'))
+    
+    file = request.files['file']
+    if file.filename == '':
+        flash('Žiadny súbor nebol vybraný', 'danger')
+        return redirect(url_for('nastavenia'))
+    
+    try:
+        import_data_json = json.load(file)
+        
+        # Validácia
+        is_valid, errors, warnings = validate_import(import_data_json, DB_PATH)
+        
+        if not is_valid:
+            flash(f"Import zlyhal: {'; '.join(errors)}", 'danger')
+            return redirect(url_for('nastavenia'))
+        
+        # Režim importu
+        mode = request.form.get('import_mode', 'merge')
+        
+        success, message, stats = import_data(import_data_json, DB_PATH, mode=mode)
+        
+        if success:
+            if warnings:
+                flash(f"{message} (varovania: {len(warnings)})", 'warning')
+            else:
+                flash(message, 'success')
+        else:
+            flash(message, 'danger')
+            
+    except json.JSONDecodeError:
+        flash('Neplatný JSON formát', 'danger')
+    except Exception as e:
+        flash(f'Chyba pri importe: {str(e)}', 'danger')
+    
+    return redirect(url_for('nastavenia'))
+
+
+@app.route('/api/validate-import', methods=['POST'])
+def api_validate_import():
+    """API endpoint pre validáciu importu bez vykonania."""
+    from database import DB_PATH
+    
+    data = request.get_json()
+    if not data:
+        return jsonify({'valid': False, 'errors': ['Žiadne dáta']})
+    
+    is_valid, errors, warnings = validate_import(data, DB_PATH)
+    
+    return jsonify({
+        'valid': is_valid,
+        'errors': errors,
+        'warnings': warnings,
+        'current_schema': _get_schema_version(DB_PATH),
+        'import_schema': data.get('schema_version', 'unknown')
+    })
+
+
+def _get_schema_version(db_path):
+    """Pomocná funkcia pre získanie verzie schémy."""
+    import sqlite3
+    conn = sqlite3.connect(db_path)
+    cursor = conn.cursor()
+    try:
+        cursor.execute("SELECT version FROM schema_version ORDER BY applied_at DESC LIMIT 1")
+        row = cursor.fetchone()
+        return row[0] if row else 'unknown'
+    except:
+        return 'unknown'
+    finally:
+        conn.close()
 
 
 if __name__ == '__main__':
