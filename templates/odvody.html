@@ -1,0 +1,87 @@
+{% extends "base.html" %}
+
+{% block title %}Odvody - Daňová evidencia{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-shield-check text-secondary"></i> Evidencia odvodov</h2>
+    <div class="d-flex gap-2">
+        <form method="get" class="d-flex gap-2">
+            <select name="rok" class="form-select" onchange="this.form.submit()">
+                {% for r in range(2020, 2031) %}
+                <option value="{{ r }}" {% if r == rok %}selected{% endif %}>{{ r }}</option>
+                {% endfor %}
+            </select>
+        </form>
+        <a href="{{ url_for('pridat_odvod') }}" class="btn btn-secondary">
+            <i class="bi bi-plus-circle"></i> Pridať odvod
+        </a>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <h5 class="text-muted">Rok: {{ rok }}</h5>
+            </div>
+            <div class="col-md-6 text-md-end">
+                <h5 class="text-secondary">Celkom odvody: <strong>{{ format_mena(total) }}</strong></h5>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="table-container">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>Dátum úhrady</th>
+                    <th>Typ odvodu</th>
+                    <th>Obdobie</th>
+                    <th class="text-end">Suma</th>
+                    <th>Poznámka</th>
+                    <th class="text-center">Akcie</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for o in odvody %}
+                <tr>
+                    <td>{{ format_datum(o.datum_uhrady) }}</td>
+                    <td>
+                        {% if o.typ_odvodu == 'Sociálne poistenie' %}
+                        <span class="badge bg-primary">{{ o.typ_odvodu }}</span>
+                        {% else %}
+                        <span class="badge bg-success">{{ o.typ_odvodu }}</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ o.obdobie }}</td>
+                    <td class="text-end fw-bold">{{ format_mena(o.suma) }}</td>
+                    <td>{{ o.poznamka or '-' }}</td>
+                    <td class="text-center">
+                        <a href="{{ url_for('zmazat_odvod', id=o.id) }}" class="btn btn-sm btn-outline-danger"
+                           onclick="return confirm('Naozaj chcete zmazať tento odvod?')">
+                            <i class="bi bi-trash"></i>
+                        </a>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="6" class="text-center text-muted py-4">
+                        <i class="bi bi-inbox fs-1"></i><br>
+                        Žiadne odvody za rok {{ rok }}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="alert alert-info mt-4">
+    <i class="bi bi-info-circle me-2"></i>
+    <strong>Tip:</strong> Zaplatené odvody do Sociálnej a zdravotnej poisťovne sa zadávajú do daňového priznania k dani z príjmov.
+    Udržujte si prehľad o všetkých odvodoch.
+</div>
+{% endblock %}

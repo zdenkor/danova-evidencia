@@ -1,0 +1,89 @@
+{% extends "base.html" %}
+
+{% block title %}Pridať majetok - Daňová evidencia{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0"><i class="bi bi-plus-circle"></i> Pridať majetok</h4>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Názov majetku *</label>
+                            <input type="text" name="nazov" class="form-control" required
+                                   placeholder="napr. Notebook Dell XPS">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Druh majetku *</label>
+                            <select name="druh_majetku" class="form-select" required>
+                                <option value="Hmotný majetok">Hmotný majetok</option>
+                                <option value="Nehmotný majetok">Nehmotný majetok</option>
+                                <option value="Pozemok">Pozemok</option>
+                                <option value="Budova">Budova</option>
+                                <option value="Stroj">Stroj / zariadenie</option>
+                                <option value="Dopravný prostriedok">Dopravný prostriedok</option>
+                                <option value="Iný">Iný</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Dátum obstarania *</label>
+                            <input type="date" name="datum_obstarania" class="form-control" required
+                                   value="{{ aktualny_datum }}">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Dátum zaradenia</label>
+                            <input type="date" name="datum_zaradenia" class="form-control"
+                                   value="{{ aktualny_datum }}">
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Vstupná cena (bez DPH) *</label>
+                            <div class="input-group">
+                                <input type="number" name="vstupna_cena" class="form-control" required
+                                       step="0.01" min="0" placeholder="0.00">
+                                <span class="input-group-text">€</span>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Odpisová skupina</label>
+                            <select name="odpisova_skupina" class="form-select">
+                                <option value="">-- Vyberte --</option>
+                                <option value="1">1 - 4 roky (napr. PC, nábytok)</option>
+                                <option value="2">2 - 6 rokov</option>
+                                <option value="3">3 - 8 rokov</option>
+                                <option value="4">4 - 10 rokov</option>
+                                <option value="5">5 - 20 rokov</option>
+                                <option value="6">6 - 40 rokov (budovy)</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Poznámka</label>
+                        <textarea name="poznamka" class="form-control" rows="2"
+                                  placeholder="napr. Číslo faktúry, dodávateľ..."></textarea>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-circle"></i> Uložiť majetok
+                        </button>
+                        <a href="{{ url_for('majetok') }}" class="btn btn-outline-secondary">
+                            <i class="bi bi-x-circle"></i> Zrušiť
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

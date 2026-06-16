@@ -1,0 +1,225 @@
+{% extends "base.html" %}
+
+{% block title %}Ročný prehľad - Daňová evidencia{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-graph-up text-primary"></i> Ročný prehľad</h2>
+    <form method="get" class="d-flex gap-2">
+        <select name="rok" class="form-select" onchange="this.form.submit()">
+            {% for r in range(2020, 2031) %}
+            <option value="{{ r }}" {% if r == rok %}selected{% endif %}>{{ r }}</option>
+            {% endfor %}
+        </select>
+    </form>
+</div>
+
+<!-- Hlavné čísla -->
+<div class="row g-4 mb-4">
+    <div class="col-md-4">
+        <div class="card stat-card income h-100">
+            <div class="card-body">
+                <h6 class="text-muted">Celkové príjmy ({{ rok }})</h6>
+                <h3 class="amount-positive">{{ format_mena(prijmy) }}</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card stat-card expense h-100">
+            <div class="card-body">
+                <h6 class="text-muted">Skutočné výdavky ({{ rok }})</h6>
+                <h3 class="amount-negative">{{ format_mena(vydavky) }}</h3>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card stat-card warning h-100">
+            <div class="card-body">
+                <h6 class="text-muted">Paušálne výdavky (60%, max 20 000 €)</h6>
+                <h3 class="text-warning">{{ format_mena(pausalne) }}</h3>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Výpočet základu dane -->
+<div class="row g-4 mb-4">
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header bg-white">
+                <h5 class="mb-0"><i class="bi bi-calculator"></i> Výpočet základu dane</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-borderless">
+                    <tbody>
+                        <tr>
+                            <td>Celkové príjmy:</td>
+                            <td class="text-end fw-bold">{{ format_mena(prijmy) }}</td>
+                        </tr>
+                        <tr class="table-light">
+                            <td>Paušálne výdavky (60%):</td>
+                            <td class="text-end fw-bold text-warning">- {{ format_mena(pausalne) }}</td>
+                        </tr>
+                        <tr class="table-success">
+                            <td><strong>Základ dane (paušálne):</strong></td>
+                            <td class="text-end fw-bold text-success fs-5">{{ format_mena(prijmy - pausalne) }}</td>
+                        </tr>
+                        <tr><td colspan="2"><hr></td></tr>
+                        <tr class="table-light">
+                            <td>Skutočné výdavky:</td>
+                            <td class="text-end fw-bold text-danger">- {{ format_mena(vydavky) }}</td>
+                        </tr>
+                        <tr class="table-info">
+                            <td><strong>Základ dane (skutočné):</strong></td>
+                            <td class="text-end fw-bold text-primary fs-5">{{ format_mena(prijmy - vydavky) }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header bg-white">
+                <h5 class="mb-0"><i class="bi bi-pie-chart"></i> Odvody a pohľadávky</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-borderless">
+                    <tbody>
+                        <tr>
+                            <td>Sociálne poistenie:</td>
+                            <td class="text-end fw-bold">{{ format_mena(odvody_soc) }}</td>
+                        </tr>
+                        <tr>
+                            <td>Zdravotné poistenie:</td>
+                            <td class="text-end fw-bold">{{ format_mena(odvody_zdr) }}</td>
+                        </tr>
+                        <tr class="table-light">
+                            <td><strong>Celkom odvody:</strong></td>
+                            <td class="text-end fw-bold">{{ format_mena(odvody_soc + odvody_zdr) }}</td>
+                        </tr>
+                        <tr><td colspan="2"><hr></td></tr>
+                        <tr>
+                            <td>Neuhradené pohľadávky k 31.12.:</td>
+                            <td class="text-end fw-bold text-warning">{{ format_mena(pohladavky_k31) }}</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Graf mesačných príjmov a výdavkov -->
+<div class="card mb-4">
+    <div class="card-header bg-white">
+        <h5 class="mb-0"><i class="bi bi-bar-chart"></i> Mesačný prehľad príjmov a výdavkov</h5>
+    </div>
+    <div class="card-body">
+        <canvas id="mesacnyGraf" height="100"></canvas>
+    </div>
+</div>
+
+<!-- Tabuľka mesačných hodnôt -->
+<div class="card">
+    <div class="card-header bg-white">
+        <h5 class="mb-0"><i class="bi bi-table"></i> Mesačné hodnoty</h5>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-sm table-bordered text-center">
+                <thead class="table-light">
+                    <tr>
+                        <th>Mesiac</th>
+                        {% for m in range(1, 13) %}
+                        <th>{{ m }}</th>
+                        {% endfor %}
+                        <th>Celkom</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td class="fw-bold text-success">Príjmy</td>
+                        {% for mp in mesacne_prijmy %}
+                        <td>{{ "%.0f"|format(mp) }}</td>
+                        {% endfor %}
+                        <td class="fw-bold">{{ "%.0f"|format(prijmy) }}</td>
+                    </tr>
+                    <tr>
+                        <td class="fw-bold text-danger">Výdavky</td>
+                        {% for mv in mesacne_vydavky %}
+                        <td>{{ "%.0f"|format(mv) }}</td>
+                        {% endfor %}
+                        <td class="fw-bold">{{ "%.0f"|format(vydavky) }}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Info pre daňové priznanie -->
+<div class="alert alert-info mt-4">
+    <i class="bi bi-info-circle me-2"></i>
+    <div>
+        <strong>Pre daňové priznanie k dani z príjmov (typ B):</strong><br>
+        <ul class="mb-0">
+            <li>Riadok 1: Príjmy z podnikania = <strong>{{ format_mena(prijmy) }}</strong></li>
+            <li>Riadok 2: Paušálne výdavky = <strong>{{ format_mena(pausalne) }}</strong> (alebo skutočné výdavky = {{ format_mena(vydavky) }})</li>
+            <li>Riadok 3: Základ dane = <strong>{{ format_mena(prijmy - pausalne) }}</strong> (pri paušálnych výdavkoch)</li>
+            <li>Zaplatené zdravotné poistenie = <strong>{{ format_mena(odvody_zdr) }}</strong> (započítava sa do základu dane)</li>
+            <li>Zaplatené sociálne poistenie = <strong>{{ format_mena(odvody_soc) }}</strong> (započítava sa do základu dane)</li>
+        </ul>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const ctx = document.getElementById('mesacnyGraf').getContext('2d');
+    new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: ['Jan', 'Feb', 'Mar', 'Apr', 'Máj', 'Jún', 'Júl', 'Aug', 'Sep', 'Okt', 'Nov', 'Dec'],
+            datasets: [
+                {
+                    label: 'Príjmy',
+                    data: {{ mesacne_prijmy | tojson }},
+                    backgroundColor: 'rgba(56, 161, 105, 0.7)',
+                    borderColor: 'rgba(56, 161, 105, 1)',
+                    borderWidth: 1
+                },
+                {
+                    label: 'Výdavky',
+                    data: {{ mesacne_vydavky | tojson }},
+                    backgroundColor: 'rgba(229, 62, 62, 0.7)',
+                    borderColor: 'rgba(229, 62, 62, 1)',
+                    borderWidth: 1
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        callback: function(value) {
+                            return value + ' €';
+                        }
+                    }
+                }
+            },
+            plugins: {
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            return context.dataset.label + ': ' + context.raw.toFixed(2) + ' €';
+                        }
+                    }
+                }
+            }
+        }
+    });
+</script>
+{% endblock %}

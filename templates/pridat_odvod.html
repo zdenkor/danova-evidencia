@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+
+{% block title %}Pridať odvod - Daňová evidencia{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header bg-secondary text-white">
+                <h4 class="mb-0"><i class="bi bi-plus-circle"></i> Pridať odvod</h4>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Dátum úhrady *</label>
+                            <input type="date" name="datum_uhrady" class="form-control" required
+                                   value="{{ aktualny_datum }}">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Typ odvodu *</label>
+                            <select name="typ_odvodu" class="form-select" required>
+                                <option value="Sociálne poistenie">Sociálne poistenie</option>
+                                <option value="Zdravotné poistenie">Zdravotné poistenie</option>
+                                <option value="Dobrovoľné sociálne">Dobrovoľné sociálne poistenie</option>
+                                <option value="Iný odvod">Iný odvod</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Obdobie *</label>
+                            <input type="text" name="obdobie" class="form-control" required
+                                   placeholder="napr. 01/2026 alebo ročné zúčtovanie 2025">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Suma *</label>
+                            <div class="input-group">
+                                <input type="number" name="suma" class="form-control" required
+                                       step="0.01" min="0" placeholder="0.00">
+                                <span class="input-group-text">€</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Poznámka</label>
+                        <textarea name="poznamka" class="form-control" rows="2"
+                                  placeholder="napr. Variabilný symbol, IBAN..."></textarea>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-secondary">
+                            <i class="bi bi-check-circle"></i> Uložiť odvod
+                        </button>
+                        <a href="{{ url_for('odvody') }}" class="btn btn-outline-secondary">
+                            <i class="bi bi-x-circle"></i> Zrušiť
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

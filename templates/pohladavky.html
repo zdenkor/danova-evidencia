@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+
+{% block title %}Pohľadávky - Daňová evidencia{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-receipt text-warning"></i> Evidencia pohľadávok</h2>
+    <a href="{{ url_for('pridat_pohladavku') }}" class="btn btn-warning">
+        <i class="bi bi-plus-circle"></i> Pridať pohľadávku
+    </a>
+</div>
+
+<div class="table-container">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>Číslo faktúry</th>
+                    <th>Odberateľ</th>
+                    <th>Dátum vystavenia</th>
+                    <th>Dátum splatnosti</th>
+                    <th class="text-end">Suma</th>
+                    <th>Stav</th>
+                    <th>Dátum úhrady</th>
+                    <th class="text-center">Akcie</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in pohladavky %}
+                <tr class="{% if p.stav == 'neuhradena' and p.datum_splatnosti < aktualny_datum %}table-danger{% endif %}">
+                    <td><code>{{ p.cislo_faktury }}</code></td>
+                    <td>
+                        {{ p.odberatel }}
+                        {% if p.ico_odberatela %}
+                        <br><small class="text-muted">IČO: {{ p.ico_odberatela }}</small>
+                        {% endif %}
+                    </td>
+                    <td>{{ format_datum(p.datum_vystavenia) }}</td>
+                    <td>
+                        {{ format_datum(p.datum_splatnosti) }}
+                        {% if p.stav == 'neuhradena' and p.datum_splatnosti < aktualny_datum %}
+                        <br><span class="badge bg-danger">Po splatnosti!</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-end fw-bold">{{ format_mena(p.suma) }}</td>
+                    <td>
+                        {% if p.stav == 'uhradena' %}
+                        <span class="badge-status status-paid">Uhradená</span>
+                        {% else %}
+                        <span class="badge-status status-unpaid">Neuhradená</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ format_datum(p.datum_uhrady) or '-' }}</td>
+                    <td class="text-center">
+                        {% if p.stav == 'neuhradena' %}
+                        <button type="button" class="btn btn-sm btn-success" data-bs-toggle="modal"
+                                data-bs-target="#uhradaModal{{ p.id }}">
+                            <i class="bi bi-check-circle"></i> Uhradiť
+                        </button>
+                        {% endif %}
+                        <a href="{{ url_for('zmazat_pohladavku', id=p.id) }}" class="btn btn-sm btn-outline-danger ms-1"
+                           onclick="return confirm('Naozaj chcete zmazať túto pohľadávku?')">
+                            <i class="bi bi-trash"></i>
+                        </a>
+                    </td>
+                </tr>
+
+                <!-- Modal pre úhradu -->
+                <div class="modal fade" id="uhradaModal{{ p.id }}" tabindex="-1">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <form method="post" action="{{ url_for('uhradit_pohladavku', id=p.id) }}">
+                                <div class="modal-header">
+                                    <h5 class="modal-title">Uhradiť pohľadávku {{ p.cislo_faktury }}</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <div class="mb-3">
+                                        <label class="form-label">Dátum úhrady *</label>
+                                        <input type="date" name="datum_uhrady" class="form-control" required
+                                               value="{{ aktualny_datum }}">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Uhradená suma *</label>
+                                        <div class="input-group">
+                                            <input type="number" name="uhradena_suma" class="form-control" required
+                                                   step="0.01" min="0" value="{{ p.suma }}">
+                                            <span class="input-group-text">€</span>
+                                        </div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Forma úhrady</label>
+                                        <select name="forma_uhrady" class="form-select">
+                                            <option value="Bankový prevod">Bankový prevod</option>
+                                            <option value="Hotovosť">Hotovosť</option>
+                                            <option value="Kompenzácia">Kompenzácia</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Zrušiť</button>
+                                    <button type="submit" class="btn btn-success">Potvrdiť úhradu</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                {% else %}
+                <tr>
+                    <td colspan="8" class="text-center text-muted py-4">
+                        <i class="bi bi-inbox fs-1"></i><br>
+                        Žiadne pohľadávky
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

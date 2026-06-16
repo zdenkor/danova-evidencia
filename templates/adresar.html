@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+
+{% block title %}Adresár - Daňová evidencia{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-people text-primary"></i> Adresár kontaktov</h2>
+    <a href="{{ url_for('pridat_kontakt') }}" class="btn btn-primary">
+        <i class="bi bi-plus-circle"></i> Pridať kontakt
+    </a>
+</div>
+
+<!-- Filtre -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3">
+            <div class="col-md-3">
+                <label class="form-label">Typ kontaktu</label>
+                <select name="typ" class="form-select" onchange="this.form.submit()">
+                    <option value="" {% if not typ_filter %}selected{% endif %}>Všetci</option>
+                    <option value="odberatel" {% if typ_filter == 'odberatel' %}selected{% endif %}>Odberatelia</option>
+                    <option value="dodavatel" {% if typ_filter == 'dodavatel' %}selected{% endif %}>Dodávatelia</option>
+                    <option value="odberatel_dodavatel" {% if typ_filter == 'odberatel_dodavatel' %}selected{% endif %}>Odberateľ + Dodávateľ</option>
+                    <option value="interny" {% if typ_filter == 'interny' %}selected{% endif %}>Interný</option>
+                    <option value="osoba" {% if typ_filter == 'osoba' %}selected{% endif %}>Fyzická osoba</option>
+                </select>
+            </div>
+            <div class="col-md-6">
+                <label class="form-label">Hľadať</label>
+                <div class="input-group">
+                    <input type="text" name="hladat" class="form-control" value="{{ hladat or '' }}"
+                           placeholder="Názov, IČO, DIČ, email...">
+                    <button type="submit" class="btn btn-outline-primary">
+                        <i class="bi bi-search"></i>
+                    </button>
+                    {% if hladat %}
+                    <a href="{{ url_for('adresar') }}" class="btn btn-outline-secondary">
+                        <i class="bi bi-x-circle"></i>
+                    </a>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="col-md-3 d-flex align-items-end">
+                <div class="text-muted">
+                    Počet kontaktov: <strong>{{ kontakty|length }}</strong>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Zoznam kontaktov -->
+<div class="row g-4">
+    {% for k in kontakty %}
+    <div class="col-md-6 col-lg-4">
+        <div class="card h-100 contact-card">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <div>
+                        {% if k.typ == 'odberatel' %}
+                        <span class="badge bg-success mb-1">Odberateľ</span>
+                        {% elif k.typ == 'dodavatel' %}
+                        <span class="badge bg-danger mb-1">Dodávateľ</span>
+                        {% elif k.typ == 'odberatel_dodavatel' %}
+                        <span class="badge bg-warning text-dark mb-1">O+D</span>
+                        {% elif k.typ == 'interny' %}
+                        <span class="badge bg-info mb-1">Interný</span>
+                        {% else %}
+                        <span class="badge bg-secondary mb-1">Osoba</span>
+                        {% endif %}
+                        <h5 class="card-title mb-1">{{ k.nazov }}</h5>
+                    </div>
+                    <div class="dropdown">
+                        <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="dropdown">
+                            <i class="bi bi-three-dots-vertical"></i>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" href="{{ url_for('detail_kontaktu', id=k.id) }}">
+                                <i class="bi bi-eye"></i> Detail
+                            </a></li>
+                            <li><a class="dropdown-item" href="{{ url_for('upravit_kontakt', id=k.id) }}">
+                                <i class="bi bi-pencil"></i> Upraviť
+                            </a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item text-danger" href="{{ url_for('zmazat_kontakt', id=k.id) }}"
+                                   onclick="return confirm('Naozaj chcete zmazať tento kontakt?')">
+                                <i class="bi bi-trash"></i> Zmazať
+                            </a></li>
+                        </ul>
+                    </div>
+                </div>
+
+                <div class="contact-info">
+                    {% if k.ico %}
+                    <div class="mb-1">
+                        <i class="bi bi-building text-muted"></i>
+                        <small>IČO: {{ k.ico }}{% if k.dic %}, DIČ: {{ k.dic }}{% endif %}</small>
+                    </div>
+                    {% endif %}
+
+                    {% if k.sidlo_mesto %}
+                    <div class="mb-1">
+                        <i class="bi bi-geo-alt text-muted"></i>
+                        <small>{{ k.sidlo_mesto }}{% if k.sidlo_psc %}, {{ k.sidlo_psc }}{% endif %}</small>
+                    </div>
+                    {% endif %}
+
+                    {% if k.telefon %}
+                    <div class="mb-1">
+                        <i class="bi bi-telephone text-muted"></i>
+                        <small>{{ k.telefon }}</small>
+                    </div>
+                    {% endif %}
+
+                    {% if k.email %}
+                    <div class="mb-1">
+                        <i class="bi bi-envelope text-muted"></i>
+                        <small><a href="mailto:{{ k.email }}">{{ k.email }}</a></small>
+                    </div>
+                    {% endif %}
+
+                    {% if k.bankovy_ucet %}
+                    <div class="mb-1">
+                        <i class="bi bi-bank text-muted"></i>
+                        <small>{{ k.bankovy_ucet }}</small>
+                    </div>
+                    {% endif %}
+                </div>
+
+                {% if k.platca_dph %}
+                <div class="mt-2">
+                    <span class="badge bg-info">Platca DPH{% if k.ic_dph %}: {{ k.ic_dph }}{% endif %}</span>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% else %}
+    <div class="col-12">
+        <div class="text-center text-muted py-5">
+            <i class="bi bi-inbox fs-1"></i><br>
+            Žiadne kontakty v adresári
+            <br>
+            <a href="{{ url_for('pridat_kontakt') }}" class="btn btn-primary mt-3">
+                <i class="bi bi-plus-circle"></i> Pridať prvý kontakt
+            </a>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+.contact-card {
+    transition: all 0.2s;
+    border: 1px solid #e2e8f0;
+}
+.contact-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+}
+.contact-info i {
+    width: 20px;
+    display: inline-block;
+    text-align: center;
+    margin-right: 5px;
+}
+</style>
+{% endblock %}
