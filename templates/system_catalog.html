@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+
+{% block title %}Systémové katalógy - Daňová evidencia{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0"><i class="bi bi-gear"></i> Systémové katalógy</h4>
+            </div>
+            <div class="card-body">
+                <p class="text-muted">
+                    Tu môžete upravovať systémové hodnoty ako DPH sadzby, právne limity a typy dokladov.
+                    Zmeny sa prejavia okamžite v celej aplikácii.
+                </p>
+
+                {% for kategoria, items in groups.items() %}
+                <div class="mb-4">
+                    <h5 class="border-bottom pb-2 mb-3 text-primary">
+                        {% if kategoria == 'dph_sadzba' %}
+                            <i class="bi bi-percent"></i> DPH Sadzby
+                        {% elif kategoria == 'limit' %}
+                            <i class="bi bi-shield-check"></i> Právne limity
+                        {% elif kategoria == 'typ_dokladu_prijem' %}
+                            <i class="bi bi-file-earmark-arrow-up"></i> Typy dokladov - Príjem
+                        {% elif kategoria == 'typ_dokladu_vydavok' %}
+                            <i class="bi bi-file-earmark-arrow-down"></i> Typy dokladov - Výdavok
+                        {% else %}
+                            <i class="bi bi-folder"></i> {{ kategoria }}
+                        {% endif %}
+                    </h5>
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-sm">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>Kód</th>
+                                    <th>Názov</th>
+                                    <th>Hodnota</th>
+                                    <th>Popis</th>
+                                    <th>Platnosť od</th>
+                                    <th>Status</th>
+                                    <th style="width:8%"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in items %}
+                                <tr>
+                                    <td><code>{{ item.kod }}</code></td>
+                                    <td>{{ item.nazov }}</td>
+                                    <td>
+                                        {% if item.hodnota_cislo is not none %}
+                                            {{ item.hodnota_cislo }}{% if item.kategoria == 'dph_sadzba' %}%{% endif %}
+                                        {% else %}
+                                            {{ item.hodnota or '-' }}
+                                        {% endif %}
+                                    </td>
+                                    <td><small class="text-muted">{{ item.popis or '' }}</small></td>
+                                    <td>{{ item.platnost_od or '-' }}</td>
+                                    <td>
+                                        {% if item.je_aktivny %}
+                                            <span class="badge bg-success">Aktívny</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">Neaktívny</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-center">
+                                        <button type="button" class="btn btn-sm btn-outline-primary" 
+                                                data-bs-toggle="modal" 
+                                                data-bs-target="#editModal{{ item.id }}"
+                                                title="Upraviť">
+                                            <i class="bi bi-pencil"></i>
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Edit Modals -->
+                {% for item in items %}
+                <div class="modal fade" id="editModal{{ item.id }}" tabindex="-1">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <div class="modal-header bg-primary text-white">
+                                <h5 class="modal-title">Upraviť: {{ item.nazov }}</h5>
+                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                            </div>
+                            <form method="post" action="{{ url_for('upravit_system_catalog', id=item.id) }}">
+                                <div class="modal-body">
+                                    <div class="mb-3">
+                                        <label class="form-label">Názov</label>
+                                        <input type="text" name="nazov" class="form-control" value="{{ item.nazov }}" required>
+                                    </div>
+                                    {% if item.hodnota_cislo is not none %}
+                                    <div class="mb-3">
+                                        <label class="form-label">Hodnota (číslo)</label>
+                                        <input type="number" name="hodnota_cislo" class="form-control" 
+                                               value="{{ item.hodnota_cislo }}" step="0.01">
+                                    </div>
+                                    {% endif %}
+                                    <div class="mb-3">
+                                        <label class="form-label">Popis</label>
+                                        <textarea name="popis" class="form-control" rows="2">{{ item.popis or '' }}</textarea>
+                                    </div>
+                                    <div class="mb-3 form-check">
+                                        <input type="checkbox" name="je_aktivny" class="form-check-input" id="aktivny{{ item.id }}" 
+                                               {% if item.je_aktivny %}checked{% endif %}>
+                                        <label class="form-check-label" for="aktivny{{ item.id }}">Aktívny</label>
+                                    </div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Zrušiť</button>
+                                    <button type="submit" class="btn btn-primary">Uložiť</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
