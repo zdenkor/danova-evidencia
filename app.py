@@ -6,7 +6,10 @@ from database import (get_db, init_db, set_db_path, DEFAULT_DB_PATH, get_agendy_
                       get_jednotky, pridat_jednotku, upravit_jednotku, zmazat_jednotku,
                       get_sablony, get_sablona, pridat_sablonu, upravit_sablonu, zmazat_sablonu,
                       get_prijem_polozky, pridat_prijem_polozku, upravit_prijem_polozku, zmazat_prijem_polozku,
-                      get_vydavok_polozky, pridat_vydavok_polozku, upravit_vydavok_polozku, zmazat_vydavok_polozku)
+                      get_vydavok_polozky, pridat_vydavok_polozku, upravit_vydavok_polozku, zmazat_vydavok_polozku,
+                      get_system_catalog, get_system_catalog_item, get_dph_sadzby,
+                      get_typy_dokladov_prijem, get_typy_dokladov_vydavok, get_legal_limit,
+                      update_system_catalog)
 from migrations import get_current_version
 from datetime import datetime, date
 import calendar
@@ -1463,6 +1466,56 @@ def api_sablony(typ_dokladu):
     """API endpoint pre získanie šablón podľa typu dokladu."""
     sablony = get_sablony(typ_dokladu)
     return jsonify([dict(s) for s in sablony])
+
+
+# ==================== SYSTEM CATALOG ====================
+
+@app.route('/system-catalog')
+def system_catalog():
+    """Zoznam systémových katalógov."""
+    kategoria = request.args.get('kategoria')
+    items = get_system_catalog(kategoria)
+    # Group by kategoria
+    groups = {}
+    for item in items:
+        kat = item['kategoria']
+        if kat not in groups:
+            groups[kat] = []
+        groups[kat].append(dict(item))
+    return render_template('system_catalog.html', groups=groups, aktualna_kategoria=kategoria)
+
+@app.route('/system-catalog/upravit/<int:id>', methods=['POST'])
+def upravit_system_catalog(id):
+    """Upraví položku systémového katalógu."""
+    nazov = request.form.get('nazov')
+    hodnota = request.form.get('hodnota')
+    hodnota_cislo = request.form.get('hodnota_cislo')
+    popis = request.form.get('popis')
+    je_aktivny = request.form.get('je_aktivny')
+    
+    update_system_catalog(
+        id, nazov, hodnota, 
+        float(hodnota_cislo) if hodnota_cislo else None,
+        popis,
+        1 if je_aktivny else 0
+    )
+    flash('Položka bola upravená.', 'success')
+    return redirect(url_for('system_catalog'))
+
+@app.route('/api/dph-sadzby')
+def api_dph_sadzby():
+    """API endpoint pre DPH sadzby."""
+    sadzby = get_dph_sadzby()
+    return jsonify([dict(s) for s in sadzby])
+
+@app.route('/api/typy-dokladov/<typ>')
+def api_typy_dokladov(typ):
+    """API endpoint pre typy dokladov."""
+    if typ == 'prijem':
+        items = get_typy_dokladov_prijem()
+    else:
+        items = get_typy_dokladov_vydavok()
+    return jsonify([dict(i) for i in items])
 
 
 # ==================== AGENDY (FIRMY) ====================

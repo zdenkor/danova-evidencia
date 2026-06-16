@@ -792,6 +792,77 @@ def zmazat_sablonu(id):
     db.close()
 
 
+# ==================== SYSTEM CATALOG ====================
+
+def get_system_catalog(kategoria=None, je_aktivny=True):
+    """Vráti položky systémového katalógu."""
+    db = get_db()
+    query = 'SELECT * FROM system_catalog WHERE 1=1'
+    params = []
+    if kategoria:
+        query += ' AND kategoria = ?'
+        params.append(kategoria)
+    if je_aktivny:
+        query += ' AND je_aktivny = 1'
+    query += ' ORDER BY kategoria, nazov'
+    cursor = db.execute(query, params)
+    items = cursor.fetchall()
+    db.close()
+    return items
+
+def get_system_catalog_item(kategoria, kod):
+    """Vráti konkrétnu položku katalógu."""
+    db = get_db()
+    cursor = db.execute('SELECT * FROM system_catalog WHERE kategoria = ? AND kod = ?', (kategoria, kod))
+    item = cursor.fetchone()
+    db.close()
+    return item
+
+def get_dph_sadzby():
+    """Vráti aktívne DPH sadzby."""
+    return get_system_catalog('dph_sadzba')
+
+def get_typy_dokladov_prijem():
+    """Vráti typy dokladov pre príjem."""
+    return get_system_catalog('typ_dokladu_prijem')
+
+def get_typy_dokladov_vydavok():
+    """Vráti typy dokladov pre výdavok."""
+    return get_system_catalog('typ_dokladu_vydavok')
+
+def get_legal_limit(kod):
+    """Vráti hodnotu právneho limitu."""
+    item = get_system_catalog_item('limit', kod)
+    return item['hodnota_cislo'] if item else None
+
+def update_system_catalog(id, nazov, hodnota=None, hodnota_cislo=None, popis=None, je_aktivny=None):
+    """Upraví položku systémového katalógu."""
+    db = get_db()
+    fields = []
+    params = []
+    if nazov is not None:
+        fields.append('nazov = ?')
+        params.append(nazov)
+    if hodnota is not None:
+        fields.append('hodnota = ?')
+        params.append(hodnota)
+    if hodnota_cislo is not None:
+        fields.append('hodnota_cislo = ?')
+        params.append(hodnota_cislo)
+    if popis is not None:
+        fields.append('popis = ?')
+        params.append(popis)
+    if je_aktivny is not None:
+        fields.append('je_aktivny = ?')
+        params.append(je_aktivny)
+    if fields:
+        query = 'UPDATE system_catalog SET ' + ', '.join(fields) + ' WHERE id = ?'
+        params.append(id)
+        db.execute(query, params)
+        db.commit()
+    db.close()
+
+
 # ==================== FUNKCIE PRE AGENDY ====================
 
 def get_agendy_dir():
