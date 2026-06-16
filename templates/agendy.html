@@ -1,0 +1,140 @@
+{% extends "base.html" %}
+
+{% block title %}Agendy - Daňová evidencia{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-briefcase text-primary"></i> Správa agend</h2>
+</div>
+
+<!-- Vytvoriť novú agendu -->
+<div class="card mb-4">
+    <div class="card-header bg-primary text-white">
+        <h5 class="mb-0"><i class="bi bi-plus-circle"></i> Vytvoriť novú agendu</h5>
+    </div>
+    <div class="card-body">
+        <form method="post" action="{{ url_for('vytvorit_agendu_route') }}">
+            <div class="row">
+                <div class="col-md-5 mb-3">
+                    <label class="form-label">Názov agendy (názov firmy) *</label>
+                    <input type="text" name="nazov" class="form-control" required
+                           placeholder="napr. Moja firma s.r.o.">
+                </div>
+                <div class="col-md-5 mb-3">
+                    <label class="form-label">Poznámka</label>
+                    <input type="text" name="poznamka" class="form-control"
+                           placeholder="Voliteľná poznámka">
+                </div>
+                <div class="col-md-2 mb-3 d-flex align-items-end">
+                    <button type="submit" class="btn btn-success w-100">
+                        <i class="bi bi-plus-lg"></i> Vytvoriť
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Import agendy -->
+<div class="card mb-4">
+    <div class="card-header bg-info text-white">
+        <h5 class="mb-0"><i class="bi bi-upload"></i> Importovať agendu zo súboru</h5>
+    </div>
+    <div class="card-body">
+        <form method="post" action="{{ url_for('importovat_agendu_route') }}" enctype="multipart/form-data">
+            <div class="row">
+                <div class="col-md-5 mb-3">
+                    <label class="form-label">Súbor databázy (.db)</label>
+                    <input type="file" name="soubor" class="form-control" accept=".db" required>
+                </div>
+                <div class="col-md-5 mb-3">
+                    <label class="form-label">Nový názov (voliteľné)</label>
+                    <input type="text" name="novy_nazov" class="form-control"
+                           placeholder="Ponechajte prázdne pre pôvodný názov">
+                </div>
+                <div class="col-md-2 mb-3 d-flex align-items-end">
+                    <button type="submit" class="btn btn-info w-100">
+                        <i class="bi bi-upload"></i> Importovať
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Zoznam agend -->
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="bi bi-list"></i> Zoznam agend</h5>
+    </div>
+    <div class="card-body">
+        {% if agendy %}
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>Stav</th>
+                        <th>Názov</th>
+                        <th>Súbor</th>
+                        <th>Vytvorená</th>
+                        <th>Poznámka</th>
+                        <th class="text-end">Akcie</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for a in agendy %}
+                    <tr class="{{ 'table-success' if a.je_aktivna else '' }}">
+                        <td>
+                            {% if a.je_aktivna %}
+                            <span class="badge bg-success"><i class="bi bi-check-circle"></i> Aktívna</span>
+                            {% else %}
+                            <span class="badge bg-secondary">Neaktívna</span>
+                            {% endif %}
+                        </td>
+                        <td><strong>{{ a.nazov }}</strong></td>
+                        <td><code>{{ a.subor }}</code></td>
+                        <td>{{ format_datum(a.vytvorena) }}</td>
+                        <td><small class="text-muted">{{ a.poznamka or '' }}</small></td>
+                        <td class="text-end">
+                            <div class="btn-group btn-group-sm">
+                                {% if not a.je_aktivna %}
+                                <a href="{{ url_for('otvorit_agendu_route', subor=a.subor) }}" class="btn btn-outline-primary"
+                                   title="Otvoriť / Prepnúť">
+                                    <i class="bi bi-box-arrow-in-right"></i>
+                                </a>
+                                {% endif %}
+                                <a href="{{ url_for('exportovat_agendu_route', subor=a.subor) }}" class="btn btn-outline-success"
+                                   title="Exportovať">
+                                    <i class="bi bi-download"></i>
+                                </a>
+                                <a href="{{ url_for('resetnut_agendu_route', subor=a.subor) }}" class="btn btn-outline-warning"
+                                   title="Resetnúť" onclick="return confirm('Naozaj chcete resetnúť túto agendu? Všetky doklady budú vymazané!')">
+                                    <i class="bi bi-arrow-counterclockwise"></i>
+                                </a>
+                                <a href="{{ url_for('zmazat_agendu_route', subor=a.subor) }}" class="btn btn-outline-danger"
+                                   title="Zmazať" onclick="return confirm('Naozaj chcete zmazať túto agendu? Táto akcia je nevratná!')">
+                                    <i class="bi bi-trash"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center text-muted py-5">
+            <i class="bi bi-inbox fs-1"></i><br>
+            Žiadne agendy
+            <br>
+            <small>Vytvorte prvú agendu vyššie</small>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="alert alert-info mt-4">
+    <i class="bi bi-info-circle"></i>
+    <strong>Čo je agenda?</strong> Agenda je samostatná databáza pre každú firmu. Môžete mať viac agend (napr. pre rôzne firmy alebo roky) a prepínať medzi nimi.
+</div>
+{% endblock %}

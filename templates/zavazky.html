@@ -1,0 +1,120 @@
+{% extends "base.html" %}
+
+{% block title %}Záväzky - Daňová evidencia{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-file-earmark-text text-danger"></i> Evidencia záväzkov</h2>
+    <a href="{{ url_for('pridat_zavazok') }}" class="btn btn-danger">
+        <i class="bi bi-plus-circle"></i> Pridať záväzok
+    </a>
+</div>
+
+<div class="table-container">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>Číslo faktúry</th>
+                    <th>Dodávateľ</th>
+                    <th>Dátum vystavenia</th>
+                    <th>Dátum splatnosti</th>
+                    <th class="text-end">Suma</th>
+                    <th>Stav</th>
+                    <th>Dátum úhrady</th>
+                    <th class="text-center">Akcie</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for z in zavazky %}
+                <tr class="{% if z.stav == 'neuhradena' and z.datum_splatnosti < aktualny_datum %}table-danger{% endif %}">
+                    <td><code>{{ z.cislo_faktury }}</code></td>
+                    <td>
+                        {{ z.dodavatel }}
+                        {% if z.ico_dodavatela %}
+                        <br><small class="text-muted">IČO: {{ z.ico_dodavatela }}</small>
+                        {% endif %}
+                    </td>
+                    <td>{{ format_datum(z.datum_vystavenia) }}</td>
+                    <td>
+                        {{ format_datum(z.datum_splatnosti) }}
+                        {% if z.stav == 'neuhradena' and z.datum_splatnosti < aktualny_datum %}
+                        <br><span class="badge bg-danger">Po splatnosti!</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-end fw-bold">{{ format_mena(z.suma) }}</td>
+                    <td>
+                        {% if z.stav == 'uhradena' %}
+                        <span class="badge-status status-paid">Uhradená</span>
+                        {% else %}
+                        <span class="badge-status status-unpaid">Neuhradená</span>
+                        {% endif %}
+                    </td>
+                    <td>{{ format_datum(z.datum_uhrady) or '-' }}</td>
+                    <td class="text-center">
+                        {% if z.stav == 'neuhradena' %}
+                        <button type="button" class="btn btn-sm btn-success" data-bs-toggle="modal"
+                                data-bs-target="#uhradaModal{{ z.id }}">
+                            <i class="bi bi-check-circle"></i> Uhradiť
+                        </button>
+                        {% endif %}
+                        <a href="{{ url_for('zmazat_zavazok', id=z.id) }}" class="btn btn-sm btn-outline-danger ms-1"
+                           onclick="return confirm('Naozaj chcete zmazať tento záväzok?')">
+                            <i class="bi bi-trash"></i>
+                        </a>
+                    </td>
+                </tr>
+
+                <!-- Modal pre úhradu -->
+                <div class="modal fade" id="uhradaModal{{ z.id }}" tabindex="-1">
+                    <div class="modal-dialog">
+                        <div class="modal-content">
+                            <form method="post" action="{{ url_for('uhradit_zavazok', id=z.id) }}">
+                                <div class="modal-header">
+                                    <h5 class="modal-title">Uhradiť záväzok {{ z.cislo_faktury }}</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                                </div>
+                                <div class="modal-body">
+                                    <div class="mb-3">
+                                        <label class="form-label">Dátum úhrady *</label>
+                                        <input type="date" name="datum_uhrady" class="form-control" required
+                                               value="{{ aktualny_datum }}">
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Uhradená suma *</label>
+                                        <div class="input-group">
+                                            <input type="number" name="uhradena_suma" class="form-control" required
+                                                   step="0.01" min="0" value="{{ z.suma }}">
+                                            <span class="input-group-text">€</span>
+                                        </div>
+                                    </div>
+                                    <div class="mb-3">
+                                        <label class="form-label">Forma úhrady</label>
+                                        <select name="forma_uhrady" class="form-select">
+                                            <option value="Bankový prevod">Bankový prevod</option>
+                                            <option value="Hotovosť">Hotovosť</option>
+                                            <option value="Kompenzácia">Kompenzácia</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Zrušiť</button>
+                                    <button type="submit" class="btn btn-success">Potvrdiť úhradu</button>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+                {% else %}
+                <tr>
+                    <td colspan="8" class="text-center text-muted py-4">
+                        <i class="bi bi-inbox fs-1"></i><br>
+                        Žiadne záväzky
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,127 @@
+{% extends "base.html" %}
+
+{% block title %}Číselníky - Daňová evidencia{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-list-ol text-primary"></i> Číselníky</h2>
+    <a href="{{ url_for('pridat_ciselnik') }}" class="btn btn-primary">
+        <i class="bi bi-plus-circle"></i> Pridať číselník
+    </a>
+</div>
+
+<div class="alert alert-info mb-4">
+    <i class="bi bi-info-circle me-2"></i>
+    <strong>Ako fungujú číselníky:</strong> Pre každý typ dokladu si definujete vzor číslovania.
+    Podporované premenné: <code>RRRR</code> (rok 4 číslice), <code>RR</code> (rok 2 číslice),
+    <code>MM</code> (mesiac), <code>DD</code> (deň), <code>NNNNNN</code> (poradové číslo).
+    Príklad: <code>FV-RRRR-NNNNNN</code> → FV-2026-000001
+</div>
+
+<div class="table-container">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>Názov</th>
+                    <th>Typ</th>
+                    <th>Prefix</th>
+                    <th>Vzor</th>
+                    <th>Aktuálne číslo</th>
+                    <th>Náhľad</th>
+                    <th>Stav</th>
+                    <th class="text-center">Akcie</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for c in ciselniky %}
+                <tr>
+                    <td><strong>{{ c.nazov }}</strong></td>
+                    <td>
+                        {% if c.typ_dokladu == 'prijem' %}
+                        <span class="badge bg-success">Príjem</span>
+                        {% else %}
+                        <span class="badge bg-danger">Výdavok</span>
+                        {% endif %}
+                    </td>
+                    <td><code>{{ c.prefix or '-' }}</code></td>
+                    <td><code>{{ c.vzor }}</code></td>
+                    <td>{{ c.aktualne_cislo }}</td>
+                    <td>
+                        <span class="badge bg-primary">
+                            {% set datum = now() %}
+                            {% set cislo_str = (c.aktualne_cislo + 1) | string %}
+                            {% set cislo_str = cislo_str.zfill(c.pocet_cislic) %}
+                            {% set nahlad = c.vzor %}
+                            {% set nahlad = nahlad.replace('RRRR', datum.strftime('%Y')) %}
+                            {% set nahlad = nahlad.replace('RR', datum.strftime('%y')) %}
+                            {% set nahlad = nahlad.replace('MM', datum.strftime('%m')) %}
+                            {% set nahlad = nahlad.replace('DD', datum.strftime('%d')) %}
+                            {% set n_pattern = 'N' * c.pocet_cislic %}
+                            {% set nahlad = nahlad.replace(n_pattern, cislo_str) %}
+                            {% if c.prefix %}
+                                {{ c.prefix }}{{ c.oddelovac or '' }}{{ nahlad }}
+                            {% else %}
+                                {{ nahlad }}
+                            {% endif %}
+                        </span>
+                    </td>
+                    <td>
+                        {% if c.je_aktivny %}
+                        <span class="badge bg-success">Aktívny</span>
+                        {% else %}
+                        <span class="badge bg-secondary">Neaktívny</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-center">
+                        <a href="{{ url_for('upravit_ciselnik', id=c.id) }}" class="btn btn-sm btn-outline-primary me-1">
+                            <i class="bi bi-pencil"></i>
+                        </a>
+                        <a href="{{ url_for('zmazat_ciselnik', id=c.id) }}" class="btn btn-sm btn-outline-danger"
+                           onclick="return confirm('Naozaj chcete zmazať tento číselník?')">
+                            <i class="bi bi-trash"></i>
+                        </a>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="8" class="text-center text-muted py-4">
+                        <i class="bi bi-inbox fs-1"></i><br>
+                        Žiadne číselníky
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="card mt-4">
+    <div class="card-header bg-white">
+        <h5 class="mb-0"><i class="bi bi-question-circle"></i> Návod na používanie číselníkov</h5>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <h6>Dostupné premenné vo vzore:</h6>
+                <ul>
+                    <li><code>RRRR</code> – rok (4 číslice), napr. 2026</li>
+                    <li><code>RR</code> – rok (2 číslice), napr. 26</li>
+                    <li><code>MM</code> – mesiac (2 číslice), napr. 06</li>
+                    <li><code>DD</code> – deň (2 číslice), napr. 15</li>
+                    <li><code>NNNNNN</code> – poradové číslo (podľa počtu číslic)</li>
+                </ul>
+            </div>
+            <div class="col-md-6">
+                <h6>Príklady vzorov:</h6>
+                <ul>
+                    <li><code>RRRR-NNNNNN</code> → 2026-000001</li>
+                    <li><code>RRMM-NNNN</code> → 2606-0001</li>
+                    <li><code>RRRRMMNNNNNN</code> → 202606000001</li>
+                    <li><code>NNNN/RRRR</code> → 0001/2026</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

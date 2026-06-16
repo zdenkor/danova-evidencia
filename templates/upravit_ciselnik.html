@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+
+{% block title %}Upraviť číselník - Daňová evidencia{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0"><i class="bi bi-pencil"></i> Upraviť číselník</h4>
+            </div>
+            <div class="card-body">
+                <form method="post" id="ciselnikForm">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Názov číselníka *</label>
+                            <input type="text" name="nazov" class="form-control" required
+                                   value="{{ ciselnik.nazov }}"
+                                   placeholder="napr. Faktúra vystavená">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Typ dokladu *</label>
+                            <select name="typ_dokladu" class="form-select" required>
+                                <option value="prijem" {% if ciselnik.typ_dokladu == 'prijem' %}selected{% endif %}>Príjem</option>
+                                <option value="vydavok" {% if ciselnik.typ_dokladu == 'vydavok' %}selected{% endif %}>Výdavok</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Prefix</label>
+                            <input type="text" name="prefix" class="form-control"
+                                   value="{{ ciselnik.prefix or '' }}"
+                                   placeholder="napr. FV">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Oddelovač</label>
+                            <input type="text" name="oddelovac" class="form-control"
+                                   value="{{ ciselnik.oddelovac or '-' }}">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Počet číslic *</label>
+                            <input type="number" name="pocet_cislic" class="form-control" required
+                                   value="{{ ciselnik.pocet_cislic }}" min="1" max="10">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Vzor číslovania *</label>
+                        <div class="input-group">
+                            <input type="text" name="vzor" class="form-control" required
+                                   value="{{ ciselnik.vzor }}" id="vzorInput"
+                                   placeholder="napr. RRRR-NNNNNN">
+                            <button type="button" class="btn btn-outline-secondary" onclick="updatePreview()">
+                                <i class="bi bi-eye"></i> Náhľad
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="alert alert-light border mb-3">
+                        <strong>Náhľad ďalšieho čísla:</strong>
+                        <span id="previewCislo" class="badge bg-primary fs-6 ms-2">-</span>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Aktuálne číslo</label>
+                            <input type="number" name="aktualne_cislo" class="form-control"
+                                   value="{{ ciselnik.aktualne_cislo }}" min="0">
+                            <small class="text-muted">Posledné použité číslo</small>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Poznámka</label>
+                            <input type="text" name="poznamka" class="form-control"
+                                   value="{{ ciselnik.poznamka or '' }}"
+                                   placeholder="Popis číselníka">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input type="checkbox" name="je_aktivny" class="form-check-input" id="je_aktivny"
+                                   {% if ciselnik.je_aktivny %}checked{% endif %}>
+                            <label class="form-check-label" for="je_aktivny">
+                                Číselník je aktívny
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-circle"></i> Uložiť zmeny
+                        </button>
+                        <a href="{{ url_for('ciselniky') }}" class="btn btn-outline-secondary">
+                            <i class="bi bi-x-circle"></i> Zrušiť
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function updatePreview() {
+    const prefix = document.querySelector('[name="prefix"]').value || '';
+    const vzor = document.querySelector('[name="vzor"]').value || 'RRRR-NNNNNN';
+    const oddelovac = document.querySelector('[name="oddelovac"]').value || '';
+    const pocetCislic = parseInt(document.querySelector('[name="pocet_cislic"]').value) || 6;
+    const aktualneCislo = parseInt(document.querySelector('[name="aktualne_cislo"]').value) || 0;
+
+    const now = new Date();
+    const rok = now.getFullYear();
+    const mesiac = String(now.getMonth() + 1).padStart(2, '0');
+    const den = String(now.getDate()).padStart(2, '0');
+
+    let cisloStr = String(aktualneCislo + 1).padStart(pocetCislic, '0');
+
+    let nahlad = vzor;
+    nahlad = nahlad.replace(/RRRR/g, rok);
+    nahlad = nahlad.replace(/RR/g, String(rok).slice(-2));
+    nahlad = nahlad.replace(/MM/g, mesiac);
+    nahlad = nahlad.replace(/DD/g, den);
+    nahlad = nahlad.replace(/N+/g, cisloStr);
+
+    if (prefix) {
+        nahlad = prefix + oddelovac + nahlad;
+    }
+
+    document.getElementById('previewCislo').textContent = nahlad;
+}
+
+['prefix', 'vzor', 'oddelovac', 'pocet_cislic', 'aktualne_cislo'].forEach(name => {
+    document.querySelector('[name="' + name + '"]').addEventListener('input', updatePreview);
+});
+
+updatePreview();
+</script>
+{% endblock %}

@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+
+{% block title %}Majetok - Daňová evidencia{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-pc-display text-primary"></i> Evidencia majetku</h2>
+    <a href="{{ url_for('pridat_majetok') }}" class="btn btn-primary">
+        <i class="bi bi-plus-circle"></i> Pridať majetok
+    </a>
+</div>
+
+<div class="table-container">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>Názov</th>
+                    <th>Druh</th>
+                    <th>Dátum obstarania</th>
+                    <th>Vstupná cena</th>
+                    <th>Odpis. skupina</th>
+                    <th>Ročný odpis</th>
+                    <th>Zostatková cena</th>
+                    <th>Stav</th>
+                    <th class="text-center">Akcie</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for m in majetok %}
+                <tr>
+                    <td><strong>{{ m.nazov }}</strong></td>
+                    <td><span class="badge bg-secondary">{{ m.druh_majetku }}</span></td>
+                    <td>{{ format_datum(m.datum_obstarania) }}</td>
+                    <td class="text-end">{{ format_mena(m.vstupna_cena) }}</td>
+                    <td>{{ m.odpisova_skupina or '-' }}</td>
+                    <td class="text-end">{{ format_mena(m.rocny_odpis) if m.rocny_odpis else '-' }}</td>
+                    <td class="text-end fw-bold">{{ format_mena(m.zostatkova_cena) if m.zostatkova_cena else format_mena(m.vstupna_cena) }}</td>
+                    <td>
+                        {% if m.datum_vyradenia %}
+                        <span class="badge bg-secondary">Vyradený</span>
+                        {% else %}
+                        <span class="badge bg-success">Aktívny</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-center">
+                        <a href="{{ url_for('zmazat_majetok', id=m.id) }}" class="btn btn-sm btn-outline-danger"
+                           onclick="return confirm('Naozaj chcete zmazať tento majetok?')">
+                            <i class="bi bi-trash"></i>
+                        </a>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="9" class="text-center text-muted py-4">
+                        <i class="bi bi-inbox fs-1"></i><br>
+                        Žiadny majetok v evidencii
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="alert alert-info mt-4">
+    <i class="bi bi-info-circle me-2"></i>
+    <strong>Odpisové skupiny:</strong> 1 (4 roky), 2 (6 rokov), 3 (8 rokov), 4 (10 rokov), 5 (20 rokov), 6 (40 rokov).
+    Daňové odpisy sa vypočítavajú podľa zákona o dani z príjmov.
+</div>
+{% endblock %}

@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="sk" data-theme="light" data-density="normal" data-date-format="{{ zobrazenie.format_datumu or 'sk' }}"
+      {% if zobrazenie.font_size_nadpisy %}data-font-nadpisy="{{ zobrazenie.font_size_nadpisy }}"{% endif %}
+      {% if zobrazenie.font_size_tabulky %}data-font-tabulky="{{ zobrazenie.font_size_tabulky }}"{% endif %}
+      {% if zobrazenie.font_size_formulare %}data-font-formulare="{{ zobrazenie.font_size_formulare }}"{% endif %}
+      {% if zobrazenie.font_size_poznamky %}data-font-poznamky="{{ zobrazenie.font_size_poznamky }}"{% endif %}>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Daňová evidencia{% endblock %}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/theme.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/main.css') }}">
+    {% block extra_css %}{% endblock %}
+    <script>
+        // Načítať tému a hustotu zo servera pred vykreslením stránky
+        (function() {
+            var xhr = new XMLHttpRequest();
+            xhr.open('GET', '/api/zobrazenie', false); // synchronne
+            xhr.send(null);
+            if (xhr.status === 200) {
+                try {
+                    var z = JSON.parse(xhr.responseText);
+                    document.documentElement.setAttribute('data-theme', z.tema || 'light');
+                    document.documentElement.setAttribute('data-density', z.hustota || 'normal');
+                    if (z.font_family) {
+                        document.documentElement.style.setProperty('--font-family-base', z.font_family);
+                    }
+                    if (z.font_size) {
+                        document.documentElement.style.fontSize = z.font_size + 'px';
+                    }
+                    if (z.font_size_nadpisy) {
+                        document.documentElement.style.setProperty('--font-size-nadpisy', z.font_size_nadpisy);
+                    }
+                    if (z.font_size_tabulky) {
+                        document.documentElement.style.setProperty('--font-size-tabulky', z.font_size_tabulky);
+                    }
+                    if (z.font_size_formulare) {
+                        document.documentElement.style.setProperty('--font-size-formulare', z.font_size_formulare);
+                    }
+                    if (z.font_size_poznamky) {
+                        document.documentElement.style.setProperty('--font-size-poznamky', z.font_size_poznamky);
+                    }
+                } catch(e) {}
+            }
+        })();
+    </script>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark sticky-top">
+        <div class="container">
+            <a class="navbar-brand" href="{{ url_for('index') }}">
+                <i class="bi bi-calculator"></i> Daňová evidencia
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.endpoint == 'index' %}active{% endif %}" href="{{ url_for('index') }}">
+                            <i class="bi bi-house-door sidebar-icon"></i>Domov
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.endpoint in ['prijmy', 'pridat_prijem', 'upravit_prijem'] %}active{% endif %}" href="{{ url_for('prijmy') }}">
+                            <i class="bi bi-arrow-down-circle sidebar-icon"></i>Príjmy
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.endpoint in ['vydavky', 'pridat_vydavok', 'upravit_vydavok'] %}active{% endif %}" href="{{ url_for('vydavky') }}">
+                            <i class="bi bi-arrow-up-circle sidebar-icon"></i>Výdavky
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.endpoint in ['pohladavky', 'pridat_pohladavku'] %}active{% endif %}" href="{{ url_for('pohladavky') }}">
+                            <i class="bi bi-receipt sidebar-icon"></i>Pohľadávky
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.endpoint in ['zavazky', 'pridat_zavazok'] %}active{% endif %}" href="{{ url_for('zavazky') }}">
+                            <i class="bi bi-file-earmark-text sidebar-icon"></i>Záväzky
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.endpoint in ['majetok', 'pridat_majetok'] %}active{% endif %}" href="{{ url_for('majetok') }}">
+                            <i class="bi bi-pc-display sidebar-icon"></i>Majetok
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.endpoint in ['zasoby', 'pridat_zasobu'] %}active{% endif %}" href="{{ url_for('zasoby') }}">
+                            <i class="bi bi-box-seam sidebar-icon"></i>Zásoby
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.endpoint in ['adresar', 'pridat_kontakt', 'upravit_kontakt', 'detail_kontaktu'] %}active{% endif %}" href="{{ url_for('adresar') }}">
+                            <i class="bi bi-people sidebar-icon"></i>Adresár
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.endpoint in ['odvody', 'pridat_odvod'] %}active{% endif %}" href="{{ url_for('odvody') }}">
+                            <i class="bi bi-shield-check sidebar-icon"></i>Odvody
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link {% if request.endpoint == 'prehlad' %}active{% endif %}" href="{{ url_for('prehlad') }}">
+                            <i class="bi bi-graph-up sidebar-icon"></i>Prehľad
+                        </a>
+                    </li>
+                </ul>
+                <ul class="navbar-nav">
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle {% if request.endpoint in ['nastavenia', 'ciselniky', 'pridat_ciselnik', 'upravit_ciselnik'] %}active{% endif %}"
+                           href="#" id="nastaveniaDropdown" role="button" data-bs-toggle="dropdown">
+                            <i class="bi bi-gear sidebar-icon"></i>Nastavenia
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li>
+                                <a class="dropdown-item {% if request.endpoint == 'nastavenia' %}active{% endif %}" href="{{ url_for('nastavenia') }}">
+                                    <i class="bi bi-building"></i> Firma
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item {% if request.endpoint == 'agendy' %}active{% endif %}" href="{{ url_for('agendy') }}">
+                                    <i class="bi bi-briefcase"></i> Agendy
+                                </a>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <a class="dropdown-item {% if request.endpoint in ['ciselniky', 'pridat_ciselnik', 'upravit_ciselnik'] %}active{% endif %}" href="{{ url_for('ciselniky') }}">
+                                    <i class="bi bi-list-ol"></i> Číselníky
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item {% if request.endpoint == 'jednotky_list' %}active{% endif %}" href="{{ url_for('jednotky_list') }}">
+                                    <i class="bi bi-rulers"></i> Jednotky
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item {% if request.endpoint == 'sablony_list' %}active{% endif %}" href="{{ url_for('sablony_list') }}">
+                                    <i class="bi bi-file-earmark-text"></i> Šablóny
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item {% if request.endpoint == 'nastavenia_zobrazenia' %}active{% endif %}" href="{{ url_for('nastavenia_zobrazenia') }}">
+                                    <i class="bi bi-palette"></i> Zobrazenie
+                                </a>
+                            </li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li>
+                                <a class="dropdown-item" href="#" onclick="toggleTheme(); return false;" id="themeToggleBtn">
+                                    <i class="bi bi-moon"></i> Prepnúť tému
+                                </a>
+                            </li>
+                        </ul>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <div class="flash-messages">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ 'danger' if category == 'error' else category }} alert-dismissible fade show shadow">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+    </div>
+
+    <main class="container py-4">
+        {% block content %}{% endblock %}
+    </main>
+
+    <!-- Status bar -->
+    <nav class="navbar navbar-dark fixed-bottom status-bar">
+        <div class="container h-100">
+            <div class="d-flex w-100 h-100 justify-content-between align-items-center">
+                <div class="firm-name">
+                    <i class="bi bi-building"></i>
+                    <strong>{{ nazov_firmy or 'Neznáma firma' }}</strong>
+                </div>
+                <div class="d-flex align-items-center gap-3">
+                    <form method="post" action="{{ url_for('nastavit_datum') }}" class="d-flex align-items-center gap-2 mb-0" id="statusBarDateForm">
+                        <span class="date-label" title="Dátum uskutočnenia účtovného prípadu" data-bs-toggle="tooltip" data-bs-placement="top"><i class="bi bi-calendar3"></i> DUÚP:</span>
+                        <input type="date" name="datum" class="form-control form-control-sm date-input" value="{{ aktualny_datum }}"
+                               id="statusBarDatePicker">
+                        <span class="date-label" id="statusBarDateDisplay"><span class="date-prefix">Aktuálny dátum: </span><span class="date-value">{{ format_datum(aktualny_datum) }}</span></span>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <footer class="footer">
+        <div class="container text-center">
+            <small>Daňová evidencia &copy; 2026 | Podľa zákona č. 595/2003 Z. z. o dani z príjmov</small>
+        </div>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/l10n/sk.js"></script>
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    <script>
+        // Inicializovať flatpickr pre všetky date inputy so slovenským formátom
+        document.addEventListener('DOMContentLoaded', function() {
+            var dateFormat = document.documentElement.getAttribute('data-date-format') || 'sk';
+            var displayFmt = 'd.m.Y';
+            var valueFmt = 'Y-m-d';
+            if (dateFormat === 'iso') displayFmt = 'Y-m-d';
+            else if (dateFormat === 'eu') displayFmt = 'd. m. Y';
+            else if (dateFormat === 'us') displayFmt = 'm/d/Y';
+            else if (dateFormat === 'sk_long') displayFmt = 'd. M Y';
+
+            flatpickr.localize(flatpickr.l10ns.sk);
+
+            // Inicializovať všetky date inputy okrem status baru
+            document.querySelectorAll('input[type="date"]:not(#statusBarDatePicker)').forEach(function(input) {
+                flatpickr(input, {
+                    dateFormat: valueFmt,
+                    altInput: true,
+                    altFormat: displayFmt,
+                    allowInput: true,
+                    locale: 'sk'
+                });
+            });
+
+            // Status bar date picker - so submitom formulára
+            var statusPicker = document.getElementById('statusBarDatePicker');
+            if (statusPicker) {
+                flatpickr(statusPicker, {
+                    dateFormat: valueFmt,
+                    altInput: true,
+                    altFormat: displayFmt,
+                    allowInput: true,
+                    locale: 'sk',
+                    onChange: function(selectedDates, dateStr) {
+                        statusPicker.value = dateStr;
+                        statusPicker.dispatchEvent(new Event('change', { bubbles: true }));
+                        document.getElementById('statusBarDateForm').submit();
+                    }
+                });
+            }
+        });
+    </script>
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

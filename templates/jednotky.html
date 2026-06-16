@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+
+{% block title %}Jednotky - Daňová evidencia{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0"><i class="bi bi-rulers"></i> Jednotky</h4>
+            </div>
+            <div class="card-body">
+                <p class="text-muted">Spravujte zoznam jednotiek merania používaných pri položkách dokladov.</p>
+
+                <form method="post" action="{{ url_for('jednotky_pridat') }}" class="mb-4">
+                    <div class="row">
+                        <div class="col-md-5 mb-2">
+                            <input type="text" name="nazov" class="form-control" placeholder="Názov jednotky (napr. Kilogram)" required>
+                        </div>
+                        <div class="col-md-4 mb-2">
+                            <input type="text" name="skratka" class="form-control" placeholder="Skratka (napr. kg)" required>
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <button type="submit" class="btn btn-success w-100">
+                                <i class="bi bi-plus-lg"></i> Pridať
+                            </button>
+                        </div>
+                    </div>
+                </form>
+
+                <div class="table-responsive">
+                    <table class="table table-striped table-hover">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Názov</th>
+                                <th>Skratka</th>
+                                <th class="text-end" style="width:120px">Akcie</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for j in jednotky %}
+                            <tr>
+                                <td>{{ j.nazov }}</td>
+                                <td>{{ j.skratka }}</td>
+                                <td class="text-end">
+                                    <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#upravitModal{{ j.id }}">
+                                        <i class="bi bi-pencil"></i>
+                                    </button>
+                                    <a href="{{ url_for('jednotky_zmazat', id=j.id) }}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Naozaj zmazať túto jednotku?')">
+                                        <i class="bi bi-trash"></i>
+                                    </a>
+                                </td>
+                            </tr>
+                            {% else %}
+                            <tr>
+                                <td colspan="3" class="text-center text-muted">Žiadne jednotky</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modálne okná pre úpravu -->
+{% for j in jednotky %}
+<div class="modal fade" id="upravitModal{{ j.id }}" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Upraviť jednotku</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="{{ url_for('jednotky_upravit', id=j.id) }}">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Názov</label>
+                        <input type="text" name="nazov" class="form-control" value="{{ j.nazov }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Skratka</label>
+                        <input type="text" name="skratka" class="form-control" value="{{ j.skratka }}" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Zrušiť</button>
+                    <button type="submit" class="btn btn-primary">Uložiť</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endfor %}
+{% endblock %}

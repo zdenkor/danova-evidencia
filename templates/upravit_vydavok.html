@@ -1,0 +1,448 @@
+{% extends "base.html" %}
+
+{% block title %}Upraviť výdavok - Daňová evidencia{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0"><i class="bi bi-pencil"></i> Upraviť výdavok</h4>
+            </div>
+            <div class="card-body">
+                <form method="post" id="vydavokForm">
+                    <!-- HLAVIČKA DOKLADU -->
+                    <h5 class="border-bottom pb-2 mb-3 text-primary"><i class="bi bi-file-earmark-text"></i> Hlavička dokladu</h5>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Dátum úhrady / prijatia *</label>
+                            <input type="date" name="datum_uhrady" class="form-control" required value="{{ vydavok.datum_uhrady }}">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Typ dokladu *</label>
+                            <select name="typ_dokladu" class="form-select" required>
+                                <option value="Faktúra prijatá" {% if vydavok.typ_dokladu == 'Faktúra prijatá' %}selected{% endif %}>Faktúra prijatá</option>
+                                <option value="Pokladničný doklad" {% if vydavok.typ_dokladu == 'Pokladničný doklad' %}selected{% endif %}>Pokladničný doklad (VPD)</option>
+                                <option value="Bankový výpis" {% if vydavok.typ_dokladu == 'Bankový výpis' %}selected{% endif %}>Bankový výpis (VBÚ)</option>
+                                <option value="Interný doklad" {% if vydavok.typ_dokladu == 'Interný doklad' %}selected{% endif %}>Interný doklad (ID)</option>
+                                <option value="Iný" {% if vydavok.typ_dokladu == 'Iný' %}selected{% endif %}>Iný doklad</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Číslo dokladu *</label>
+                            <input type="text" name="cislo_dokladu" class="form-control" required value="{{ vydavok.cislo_dokladu }}">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Číslo objednávky</label>
+                            <input type="text" name="cislo_objednavky" class="form-control" value="{{ vydavok.cislo_objednavky or '' }}">
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Dátum vystavenia</label>
+                            <input type="date" name="datum_vystavenia" class="form-control" value="{{ vydavok.datum_vystavenia or vydavok.datum_uhrady }}">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Dátum splatnosti</label>
+                            <input type="date" name="datum_splatnosti" class="form-control" value="{{ vydavok.datum_splatnosti or vydavok.datum_uhrady }}">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Dátum dodania / uskutočnenia</label>
+                            <input type="date" name="datum_dodania" class="form-control" value="{{ vydavok.datum_dodania or vydavok.datum_uhrady }}">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Popis obchodného prípadu *</label>
+                        <input type="text" name="popis" class="form-control" required value="{{ vydavok.popis }}">
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Miesto dodania</label>
+                            <input type="text" name="miesto_dodania" class="form-control" value="{{ vydavok.miesto_dodania or '' }}">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Forma úhrady</label>
+                            <select name="forma_uhrady" class="form-select">
+                                <option value="" {% if not vydavok.forma_uhrady %}selected{% endif %}>-- Vyberte --</option>
+                                <option value="Bankový prevod" {% if vydavok.forma_uhrady == 'Bankový prevod' %}selected{% endif %}>Bankový prevod</option>
+                                <option value="Hotovosť" {% if vydavok.forma_uhrady == 'Hotovosť' %}selected{% endif %}>Hotovosť</option>
+                                <option value="Karta" {% if vydavok.forma_uhrady == 'Karta' %}selected{% endif %}>Platobná karta</option>
+                                <option value="Iné" {% if vydavok.forma_uhrady == 'Iné' %}selected{% endif %}>Iné</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- DODÁVATEĽ -->
+                    <h5 class="border-bottom pb-2 mb-3 mt-4 text-primary"><i class="bi bi-building"></i> Dodávateľ</h5>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Dodávateľ z adresára</label>
+                            <select name="dodavatel_id" id="dodavatel_id" class="form-select" onchange="onDodavatelChange()">
+                                <option value="">-- Ručné zadanie --</option>
+                                {% for k in kontakty %}
+                                <option value="{{ k.id }}" data-nazov="{{ k.nazov }}" data-ico="{{ k.ico or '' }}"
+                                        data-dic="{{ k.dic or '' }}" data-icdph="{{ k.ic_dph or '' }}"
+                                        data-adresa="{{ k.sidlo_ulica or '' }} {{ k.sidlo_cislo or '' }}"
+                                        data-mesto="{{ k.sidlo_mesto or '' }}" data-psc="{{ k.sidlo_psc or '' }}"
+                                        data-stat="{{ k.sidlo_stat or 'Slovensko' }}"
+                                        {% if vydavok.dodavatel_id == k.id %}selected{% endif %}>{{ k.nazov }}{% if k.ico %} (IČO: {{ k.ico }}){% endif %}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Názov / meno dodávateľa</label>
+                            <input type="text" name="dodavatel_nazov" id="dodavatel_nazov" class="form-control" value="{{ vydavok.dodavatel_nazov or '' }}">
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">IČO</label>
+                            <input type="text" name="dodavatel_ico" id="dodavatel_ico" class="form-control" value="{{ vydavok.dodavatel_ico or '' }}">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">DIČ</label>
+                            <input type="text" name="dodavatel_dic" id="dodavatel_dic" class="form-control" value="{{ vydavok.dodavatel_dic or '' }}">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">IČ DPH</label>
+                            <input type="text" name="dodavatel_ic_dph" id="dodavatel_ic_dph" class="form-control" value="{{ vydavok.dodavatel_ic_dph or '' }}">
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Adresa</label>
+                            <input type="text" name="dodavatel_adresa" id="dodavatel_adresa" class="form-control" value="{{ vydavok.dodavatel_adresa or '' }}">
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label">Mesto</label>
+                            <input type="text" name="dodavatel_mesto" id="dodavatel_mesto" class="form-control" value="{{ vydavok.dodavatel_mesto or '' }}">
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label">PSČ</label>
+                            <input type="text" name="dodavatel_psc" id="dodavatel_psc" class="form-control" value="{{ vydavok.dodavatel_psc or '' }}">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Štát</label>
+                        <input type="text" name="dodavatel_stat" id="dodavatel_stat" class="form-control" value="{{ vydavok.dodavatel_stat or 'Slovensko' }}">
+                    </div>
+
+                    <!-- ODBERATEĽ (pre výdavok - automaticky firma z agendy) -->
+                    <input type="hidden" name="odberatel_nazov" value="{{ firma.nazov_firmy or vydavok.odberatel_nazov or '' }}">
+                    <input type="hidden" name="odberatel_ico" value="{{ firma.ico or vydavok.odberatel_ico or '' }}">
+                    <input type="hidden" name="odberatel_dic" value="{{ firma.dic or vydavok.odberatel_dic or '' }}">
+                    <input type="hidden" name="odberatel_ic_dph" value="{{ firma.ic_dph or vydavok.odberatel_ic_dph or '' }}">
+                    <input type="hidden" name="odberatel_adresa" value="{{ firma.adresa or vydavok.odberatel_adresa or '' }}">
+                    <input type="hidden" name="odberatel_mesto" value="{{ firma.mesto or vydavok.odberatel_mesto or '' }}">
+                    <input type="hidden" name="odberatel_psc" value="{{ firma.psc or vydavok.odberatel_psc or '' }}">
+                    <input type="hidden" name="odberatel_stat" value="{{ vydavok.odberatel_stat or 'Slovensko' }}">
+
+                    <!-- POLOŽKY DOKLADU -->
+                    <h5 class="border-bottom pb-2 mb-3 mt-4 text-primary"><i class="bi bi-list-ol"></i> Položky dokladu</h5>
+                    <div class="table-responsive">
+                        <table class="table table-bordered table-sm" id="polozkyTable">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="width:3%">#</th>
+                                    <th style="width:18%">Názov položky</th>
+                                    <th style="width:6%">Množ.</th>
+                                    <th style="width:6%">Jedn.</th>
+                                    <th style="width:9%">Cena bez DPH</th>
+                                    <th style="width:10%">Sadzba DPH</th>
+                                    <th style="width:9%">Základ dane</th>
+                                    <th style="width:8%">DPH</th>
+                                    <th style="width:9%">Celkom</th>
+                                    <th style="width:4%"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="polozkyBody">
+                                {% for p in polozky %}
+                                <tr class="polozka-row">
+                                    <td class="poradie">{{ loop.index }}</td>
+                                    <td>
+                                        <input type="text" name="polozka_nazov[]" class="form-control form-control-sm" value="{{ p.nazov }}">
+                                        <input type="text" name="polozka_poznamka[]" class="form-control form-control-sm mt-1" placeholder="Poznámka" value="{{ p.poznamka or '' }}">
+                                    </td>
+                                    <td><input type="number" name="polozka_mnozstvo[]" class="form-control form-control-sm mnozstvo" value="{{ p.mnozstvo }}" min="0" step="0.01" oninput="prepocitajRiadok(this)"></td>
+                                    <td>
+                                        <select name="polozka_jednotka[]" class="form-select form-select-sm">
+                                            {% for j in jednotky %}
+                                            <option value="{{ j.skratka }}" {% if p.jednotka == j.skratka %}selected{% endif %}>{{ j.skratka }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </td>
+                                    <td><input type="number" name="polozka_cena[]" class="form-control form-control-sm cena" value="{{ p.jednotkova_cena_bez_dph }}" min="0" step="0.01" oninput="prepocitajRiadok(this)"></td>
+                                    <td>
+                                        <select name="polozka_sadzba_dph[]" class="form-select form-select-sm sadzba" onchange="prepocitajRiadok(this)">
+                                            <option value="23" {% if p.sadzba_dph == '23' %}selected{% endif %}>23% (základná)</option>
+                                            <option value="19" {% if p.sadzba_dph == '19' %}selected{% endif %}>19% (znížená)</option>
+                                            <option value="5" {% if p.sadzba_dph == '5' %}selected{% endif %}>5% (super-znížená)</option>
+                                            <option value="0" {% if p.sadzba_dph == '0' %}selected{% endif %}>0% (oslobodené)</option>
+                                        </select>
+                                    </td>
+                                    <td><input type="number" name="polozka_zaklad[]" class="form-control form-control-sm zaklad" value="{{ p.zaklad_dane }}" readonly step="0.01"></td>
+                                    <td><input type="number" name="polozka_dph[]" class="form-control form-control-sm dph" value="{{ p.dph }}" readonly step="0.01"></td>
+                                    <td><input type="number" name="polozka_celkom[]" class="form-control form-control-sm celkom" value="{{ p.celkova_suma }}" readonly step="0.01"></td>
+                                    <td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger" onclick="zmazPolozku(this)" title="Odstrániť"><i class="bi bi-trash"></i></button></td>
+                                </tr>
+                                {% else %}
+                                <tr class="polozka-row">
+                                    <td class="poradie">1</td>
+                                    <td>
+                                        <input type="text" name="polozka_nazov[]" class="form-control form-control-sm" placeholder="Názov položky">
+                                        <input type="text" name="polozka_poznamka[]" class="form-control form-control-sm mt-1" placeholder="Poznámka">
+                                    </td>
+                                    <td><input type="number" name="polozka_mnozstvo[]" class="form-control form-control-sm mnozstvo" value="1" min="0" step="0.01" oninput="prepocitajRiadok(this)"></td>
+                                    <td>
+                                        <select name="polozka_jednotka[]" class="form-select form-select-sm">
+                                            {% for j in jednotky %}
+                                            <option value="{{ j.skratka }}" {% if j.skratka == 'ks' %}selected{% endif %}>{{ j.skratka }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </td>
+                                    <td><input type="number" name="polozka_cena[]" class="form-control form-control-sm cena" value="0" min="0" step="0.01" oninput="prepocitajRiadok(this)"></td>
+                                    <td>
+                                        <select name="polozka_sadzba_dph[]" class="form-select form-select-sm sadzba" onchange="prepocitajRiadok(this)">
+                                            <option value="23" selected>23% (základná)</option>
+                                            <option value="19">19% (znížená)</option>
+                                            <option value="5">5% (super-znížená)</option>
+                                            <option value="0">0% (oslobodené)</option>
+                                        </select>
+                                    </td>
+                                    <td><input type="number" name="polozka_zaklad[]" class="form-control form-control-sm zaklad" value="0" readonly step="0.01"></td>
+                                    <td><input type="number" name="polozka_dph[]" class="form-control form-control-sm dph" value="0" readonly step="0.01"></td>
+                                    <td><input type="number" name="polozka_celkom[]" class="form-control form-control-sm celkom" value="0" readonly step="0.01"></td>
+                                    <td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger" onclick="zmazPolozku(this)" title="Odstrániť"><i class="bi bi-trash"></i></button></td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                            <tfoot class="table-group-divider">
+                                <tr class="fw-bold">
+                                    <td colspan="6" class="text-end">Celkový základ dane:</td>
+                                    <td><input type="number" name="zaklad_dane" id="celkovyZaklad" class="form-control form-control-sm" value="{{ vydavok.zaklad_dane or 0 }}" readonly step="0.01"></td>
+                                    <td><input type="number" name="dph" id="celkovaDph" class="form-control form-control-sm" value="{{ vydavok.dph or 0 }}" readonly step="0.01"></td>
+                                    <td><input type="number" name="celkova_suma" id="celkovaSuma" class="form-control form-control-sm" value="{{ vydavok.celkova_suma or 0 }}" readonly step="0.01"></td>
+                                    <td></td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                    <button type="button" class="btn btn-sm btn-outline-primary mb-3" onclick="pridajPolozku()">
+                        <i class="bi bi-plus-lg"></i> Pridať položku
+                    </button>
+
+                    <!-- ŠPECIÁLNE MOŽNOSTI -->
+                    <div class="row mt-3">
+                        <div class="col-md-4 mb-3">
+                            <div class="form-check">
+                                <input type="checkbox" name="je_zahranicny" class="form-check-input" id="je_zahranicny" {% if vydavok.je_zahranicny %}checked{% endif %}>
+                                <label class="form-check-label" for="je_zahranicny">Zahraničný obchod</label>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="form-check">
+                                <input type="checkbox" name="je_reverzne_zdanenie" class="form-check-input" id="je_reverzne_zdanenie" {% if vydavok.je_reverzne_zdanenie %}checked{% endif %}>
+                                <label class="form-check-label" for="je_reverzne_zdanenie">Reverzné zdanenie</label>
+                            </div>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <div class="form-check">
+                                <input type="checkbox" name="je_oslobodene" class="form-check-input" id="je_oslobodene" {% if vydavok.je_oslobodene %}checked{% endif %}>
+                                <label class="form-check-label" for="je_oslobodene">Oslobodené od DPH</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Mena</label>
+                            <select name="mena" class="form-select">
+                                <option value="EUR" {% if vydavok.mena == 'EUR' %}selected{% endif %}>EUR</option>
+                                <option value="CZK" {% if vydavok.mena == 'CZK' %}selected{% endif %}>CZK</option>
+                                <option value="USD" {% if vydavok.mena == 'USD' %}selected{% endif %}>USD</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Kategória výdavku</label>
+                            <select name="kategoria" class="form-select">
+                                <option value="" {% if not vydavok.kategoria %}selected{% endif %}>-- Vyberte --</option>
+                                <option value="Materiál" {% if vydavok.kategoria == 'Materiál' %}selected{% endif %}>Materiál a tovar</option>
+                                <option value="Služby" {% if vydavok.kategoria == 'Služby' %}selected{% endif %}>Služby</option>
+                                <option value="Energia" {% if vydavok.kategoria == 'Energia' %}selected{% endif %}>Energia a voda</option>
+                                <option value="Nájom" {% if vydavok.kategoria == 'Nájom' %}selected{% endif %}>Nájomné</option>
+                                <option value="Doprava" {% if vydavok.kategoria == 'Doprava' %}selected{% endif %}>Doprava</option>
+                                <option value="Reprezentácia" {% if vydavok.kategoria == 'Reprezentácia' %}selected{% endif %}>Reprezentácia</option>
+                                <option value="Marketing" {% if vydavok.kategoria == 'Marketing' %}selected{% endif %}>Marketing a reklama</option>
+                                <option value="Mzdy" {% if vydavok.kategoria == 'Mzdy' %}selected{% endif %}>Mzdy a odmeny</option>
+                                <option value="Odvody" {% if vydavok.kategoria == 'Odvody' %}selected{% endif %}>Odvody</option>
+                                <option value="Odpisy" {% if vydavok.kategoria == 'Odpisy' %}selected{% endif %}>Odpisy</option>
+                                <option value="Iné" {% if vydavok.kategoria == 'Iné' %}selected{% endif %}>Iné</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Poznámka</label>
+                            <textarea name="poznamka" class="form-control" rows="2">{{ vydavok.poznamka or '' }}</textarea>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <div class="form-check">
+                            <input type="checkbox" name="danovy_vydavok" class="form-check-input" id="danovy_vydavok" {% if vydavok.danovy_vydavok %}checked{% endif %}>
+                            <label class="form-check-label" for="danovy_vydavok">
+                                Daňový výdavok (započítava sa do základu dane)
+                            </label>
+                        </div>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-circle"></i> Uložiť zmeny
+                        </button>
+                        <a href="{{ url_for('vydavky') }}" class="btn btn-outline-secondary">
+                            <i class="bi bi-x-circle"></i> Zrušiť
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script type="application/json" id="jednotky-data">{{ jednotky|tojson }}</script>
+<script>
+const jednotkyData = JSON.parse(document.getElementById('jednotky-data').textContent);
+
+// Adresár - výber dodávateľa
+function onDodavatelChange() {
+    const select = document.getElementById('dodavatel_id');
+    const option = select.options[select.selectedIndex];
+    const kontaktId = option.value;
+
+    if (!kontaktId) {
+        document.getElementById('dodavatel_nazov').value = '';
+        document.getElementById('dodavatel_ico').value = '';
+        document.getElementById('dodavatel_dic').value = '';
+        document.getElementById('dodavatel_ic_dph').value = '';
+        document.getElementById('dodavatel_adresa').value = '';
+        document.getElementById('dodavatel_mesto').value = '';
+        document.getElementById('dodavatel_psc').value = '';
+        document.getElementById('dodavatel_stat').value = 'Slovensko';
+        return;
+    }
+
+    document.getElementById('dodavatel_nazov').value = option.getAttribute('data-nazov') || '';
+    document.getElementById('dodavatel_ico').value = option.getAttribute('data-ico') || '';
+    document.getElementById('dodavatel_dic').value = option.getAttribute('data-dic') || '';
+    document.getElementById('dodavatel_ic_dph').value = option.getAttribute('data-icdph') || '';
+    document.getElementById('dodavatel_adresa').value = option.getAttribute('data-adresa') || '';
+    document.getElementById('dodavatel_mesto').value = option.getAttribute('data-mesto') || '';
+    document.getElementById('dodavatel_psc').value = option.getAttribute('data-psc') || '';
+    document.getElementById('dodavatel_stat').value = option.getAttribute('data-stat') || 'Slovensko';
+}
+
+// Položky dokladu - dynamické riadky
+let polozkaPocet = {{ polozky|length if polozky else 1 }};
+
+function pridajPolozku() {
+    polozkaPocet++;
+    const tbody = document.getElementById('polozkyBody');
+    const row = document.createElement('tr');
+    row.className = 'polozka-row';
+    row.innerHTML = `
+        <td class="poradie">${polozkaPocet}</td>
+        <td>
+            <input type="text" name="polozka_nazov[]" class="form-control form-control-sm" placeholder="Názov položky">
+            <input type="text" name="polozka_poznamka[]" class="form-control form-control-sm mt-1" placeholder="Poznámka">
+        </td>
+        <td><input type="number" name="polozka_mnozstvo[]" class="form-control form-control-sm mnozstvo" value="1" min="0" step="0.01" oninput="prepocitajRiadok(this)"></td>
+        <td>
+            <select name="polozka_jednotka[]" class="form-select form-select-sm">
+                ${jednotkyData.map(j => '<option value="' + j.skratka + '" ' + (j.skratka === 'ks' ? 'selected' : '') + '>' + j.skratka + '</option>').join('')}
+            </select>
+        </td>
+        <td><input type="number" name="polozka_cena[]" class="form-control form-control-sm cena" value="0" min="0" step="0.01" oninput="prepocitajRiadok(this)"></td>
+        <td>
+            <select name="polozka_sadzba_dph[]" class="form-select form-select-sm sadzba" onchange="prepocitajRiadok(this)">
+                <option value="23" selected>23% (základná)</option>
+                <option value="19">19% (znížená)</option>
+                <option value="5">5% (super-znížená)</option>
+                <option value="0">0% (oslobodené)</option>
+            </select>
+        </td>
+        <td><input type="number" name="polozka_zaklad[]" class="form-control form-control-sm zaklad" value="0" readonly step="0.01"></td>
+        <td><input type="number" name="polozka_dph[]" class="form-control form-control-sm dph" value="0" readonly step="0.01"></td>
+        <td><input type="number" name="polozka_celkom[]" class="form-control form-control-sm celkom" value="0" readonly step="0.01"></td>
+        <td class="text-center"><button type="button" class="btn btn-sm btn-outline-danger" onclick="zmazPolozku(this)" title="Odstrániť"><i class="bi bi-trash"></i></button></td>
+    `;
+    tbody.appendChild(row);
+    prepocitajSucet();
+}
+
+function zmazPolozku(btn) {
+    const row = btn.closest('tr');
+    row.remove();
+    prepocitajPoradie();
+    prepocitajSucet();
+}
+
+function prepocitajPoradie() {
+    const rows = document.querySelectorAll('#polozkyBody .polozka-row');
+    rows.forEach((row, index) => {
+        row.querySelector('.poradie').textContent = index + 1;
+    });
+    polozkaPocet = rows.length;
+}
+
+function prepocitajRiadok(element) {
+    const row = element.closest('tr');
+    const mnozstvo = parseFloat(row.querySelector('.mnozstvo').value) || 0;
+    const cena = parseFloat(row.querySelector('.cena').value) || 0;
+    const sadzba = parseFloat(row.querySelector('.sadzba').value) || 0;
+
+    const zaklad = mnozstvo * cena;
+    const dph = zaklad * (sadzba / 100);
+    const celkom = zaklad + dph;
+
+    row.querySelector('.zaklad').value = zaokruhli(zaklad);
+    row.querySelector('.dph').value = zaokruhli(dph);
+    row.querySelector('.celkom').value = zaokruhli(celkom);
+
+    prepocitajSucet();
+}
+
+function prepocitajSucet() {
+    let celkovyZaklad = 0;
+    let celkovaDph = 0;
+    let celkovaSuma = 0;
+
+    const rows = document.querySelectorAll('#polozkyBody .polozka-row');
+    rows.forEach(row => {
+        celkovyZaklad += parseFloat(row.querySelector('.zaklad').value) || 0;
+        celkovaDph += parseFloat(row.querySelector('.dph').value) || 0;
+        celkovaSuma += parseFloat(row.querySelector('.celkom').value) || 0;
+    });
+
+    document.getElementById('celkovyZaklad').value = zaokruhli(celkovyZaklad);
+    document.getElementById('celkovaDph').value = zaokruhli(celkovaDph);
+    document.getElementById('celkovaSuma').value = zaokruhli(celkovaSuma);
+}
+
+function zaokruhli(cislo) {
+    return Math.round(cislo * 100) / 100;
+}
+
+document.addEventListener('DOMContentLoaded', function() {
+    prepocitajSucet();
+});
+</script>
+{% endblock %}

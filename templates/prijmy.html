@@ -1,0 +1,97 @@
+{% extends "base.html" %}
+
+{% block title %}Príjmy - Daňová evidencia{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-arrow-down-circle text-success"></i> Evidencia príjmov</h2>
+    <div class="d-flex gap-2">
+        <form method="get" class="d-flex gap-2">
+            <select name="rok" class="form-select" onchange="this.form.submit()">
+                {% for r in range(2020, 2031) %}
+                <option value="{{ r }}" {% if r == rok %}selected{% endif %}>{{ r }}</option>
+                {% endfor %}
+            </select>
+        </form>
+        <a href="{{ url_for('pridat_prijem') }}" class="btn btn-success">
+            <i class="bi bi-plus-circle"></i> Pridať príjem
+        </a>
+    </div>
+</div>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <h5 class="text-muted">Rok: {{ rok }}</h5>
+            </div>
+            <div class="col-md-6 text-md-end">
+                <h5 class="text-success">Celkom daňové príjmy: <strong>{{ format_mena(total) }}</strong></h5>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="table-container">
+    <div class="table-responsive">
+        <table class="table table-hover align-middle">
+            <thead class="table-light">
+                <tr>
+                    <th>Dátum</th>
+                    <th>Doklad</th>
+                    <th>Typ</th>
+                    <th>Popis / Odberateľ</th>
+                    <th class="text-end">Základ dane</th>
+                    <th class="text-end">DPH</th>
+                    <th class="text-end">Celkom</th>
+                    <th>Forma</th>
+                    <th>Daňový</th>
+                    <th class="text-center">Akcie</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for p in prijmy %}
+                <tr>
+                    <td>{{ format_datum(p.datum_prijetia) }}</td>
+                    <td><code>{{ p.cislo_dokladu }}</code></td>
+                    <td><span class="badge bg-secondary">{{ p.typ_dokladu }}</span></td>
+                    <td>
+                        <div>{{ p.popis }}</div>
+                        {% if p.odberatel_nazov %}
+                        <small class="text-muted">{{ p.odberatel_nazov }}{% if p.odberatel_ico %} (IČO: {{ p.odberatel_ico }}){% endif %}</small>
+                        {% endif %}
+                    </td>
+                    <td class="text-end fw-bold">{{ format_mena(p.zaklad_dane or 0) }}</td>
+                    <td class="text-end">{{ format_mena(p.dph or 0) }}</td>
+                    <td class="text-end fw-bold text-success">{{ format_mena(p.celkova_suma or p.suma) }}</td>
+                    <td>{{ p.forma_uhrady or '-' }}</td>
+                    <td>
+                        {% if p.danovy_prijem %}
+                        <span class="badge bg-success">Áno</span>
+                        {% else %}
+                        <span class="badge bg-secondary">Nie</span>
+                        {% endif %}
+                    </td>
+                    <td class="text-center">
+                        <a href="{{ url_for('upravit_prijem', id=p.id) }}" class="btn btn-sm btn-outline-primary me-1">
+                            <i class="bi bi-pencil"></i>
+                        </a>
+                        <a href="{{ url_for('zmazat_prijem', id=p.id) }}" class="btn btn-sm btn-outline-danger"
+                           onclick="return confirm('Naozaj chcete zmazať tento príjem?')">
+                            <i class="bi bi-trash"></i>
+                        </a>
+                    </td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="10" class="text-center text-muted py-4">
+                        <i class="bi bi-inbox fs-1"></i><br>
+                        Žiadne príjmy za rok {{ rok }}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+{% endblock %}

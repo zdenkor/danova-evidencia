@@ -1,0 +1,192 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-12">
+        <h1 class="display-5 fw-bold text-primary">
+            <i class="bi bi-calculator"></i> Daňová evidencia
+        </h1>
+        <p class="lead text-muted">
+            {% if nastavenia %}
+                {{ nastavenia.nazov_firmy }} | Rok: {{ rok }}
+            {% else %}
+                Rok: {{ rok }}
+            {% endif %}
+        </p>
+    </div>
+</div>
+
+<!-- Štatistické karty -->
+<div class="row g-4 mb-4">
+    <div class="col-md-3">
+        <div class="card stat-card income h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <h6 class="text-muted mb-1">Príjmy ({{ rok }})</h6>
+                        <h3 class="amount-positive mb-0">{{ format_mena(prijmy) }}</h3>
+                    </div>
+                    <div class="bg-success bg-opacity-10 rounded-circle p-2">
+                        <i class="bi bi-arrow-down-circle text-success fs-4"></i>
+                    </div>
+                </div>
+                <a href="{{ url_for('prijmy') }}" class="btn btn-sm btn-outline-success mt-3 w-100">
+                    <i class="bi bi-list"></i> Zobraziť príjmy
+                </a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card expense h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <h6 class="text-muted mb-1">Výdavky ({{ rok }})</h6>
+                        <h3 class="amount-negative mb-0">{{ format_mena(vydavky) }}</h3>
+                    </div>
+                    <div class="bg-danger bg-opacity-10 rounded-circle p-2">
+                        <i class="bi bi-arrow-up-circle text-danger fs-4"></i>
+                    </div>
+                </div>
+                <a href="{{ url_for('vydavky') }}" class="btn btn-sm btn-outline-danger mt-3 w-100">
+                    <i class="bi bi-list"></i> Zobraziť výdavky
+                </a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card warning h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <h6 class="text-muted mb-1">Paušálne výdavky</h6>
+                        <h3 class="text-warning mb-0">{{ format_mena(pausalne) }}</h3>
+                        <small class="text-muted">60% z príjmov, max. 20 000 €</small>
+                    </div>
+                    <div class="bg-warning bg-opacity-10 rounded-circle p-2">
+                        <i class="bi bi-percent text-warning fs-4"></i>
+                    </div>
+                </div>
+                <a href="{{ url_for('prehlad') }}" class="btn btn-sm btn-outline-warning mt-3 w-100">
+                    <i class="bi bi-graph-up"></i> Prehľad
+                </a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card h-100">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <h6 class="text-muted mb-1">Základ dane</h6>
+                        <h3 class="text-primary mb-0">{{ format_mena(prijmy - pausalne) }}</h3>
+                        <small class="text-muted">Príjmy - paušálne výdavky</small>
+                    </div>
+                    <div class="bg-primary bg-opacity-10 rounded-circle p-2">
+                        <i class="bi bi-cash-stack text-primary fs-4"></i>
+                    </div>
+                </div>
+                <a href="{{ url_for('prehlad') }}" class="btn btn-sm btn-outline-primary mt-3 w-100">
+                    <i class="bi bi-calculator"></i> Detailný prehľad
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Pohľadávky a záväzky -->
+<div class="row g-4 mb-4">
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header bg-white">
+                <h5 class="mb-0"><i class="bi bi-receipt text-warning"></i> Neuhradené pohľadávky</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <span class="text-muted">Počet:</span>
+                    <span class="badge bg-warning text-dark fs-6">{{ pohladavky_count }}</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <span class="text-muted">Celková suma:</span>
+                    <span class="fw-bold text-warning fs-5">{{ format_mena(pohladavky_sum) }}</span>
+                </div>
+                <a href="{{ url_for('pohladavky') }}" class="btn btn-outline-warning w-100">
+                    <i class="bi bi-eye"></i> Spravovať pohľadávky
+                </a>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card h-100">
+            <div class="card-header bg-white">
+                <h5 class="mb-0"><i class="bi bi-file-earmark-text text-danger"></i> Neuhradené záväzky</h5>
+            </div>
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <span class="text-muted">Počet:</span>
+                    <span class="badge bg-danger fs-6">{{ zavazky_count }}</span>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <span class="text-muted">Celková suma:</span>
+                    <span class="fw-bold text-danger fs-5">{{ format_mena(zavazky_sum) }}</span>
+                </div>
+                <a href="{{ url_for('zavazky') }}" class="btn btn-outline-danger w-100">
+                    <i class="bi bi-eye"></i> Spravovať záväzky
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Rýchle akcie -->
+<div class="row">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header bg-white">
+                <h5 class="mb-0"><i class="bi bi-lightning-charge text-primary"></i> Rýchle akcie</h5>
+            </div>
+            <div class="card-body">
+                <div class="row g-3">
+                    <div class="col-md-3">
+                        <a href="{{ url_for('pridat_prijem') }}" class="btn btn-success w-100 py-3">
+                            <i class="bi bi-plus-circle fs-4 d-block mb-2"></i>
+                            Pridať príjem
+                        </a>
+                    </div>
+                    <div class="col-md-3">
+                        <a href="{{ url_for('pridat_vydavok') }}" class="btn btn-danger w-100 py-3">
+                            <i class="bi bi-plus-circle fs-4 d-block mb-2"></i>
+                            Pridať výdavok
+                        </a>
+                    </div>
+                    <div class="col-md-3">
+                        <a href="{{ url_for('pridat_pohladavku') }}" class="btn btn-warning w-100 py-3">
+                            <i class="bi bi-plus-circle fs-4 d-block mb-2"></i>
+                            Pridať pohľadávku
+                        </a>
+                    </div>
+                    <div class="col-md-3">
+                        <a href="{{ url_for('prehlad') }}" class="btn btn-primary w-100 py-3">
+                            <i class="bi bi-graph-up fs-4 d-block mb-2"></i>
+                            Ročný prehľad
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Info box -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="alert alert-info d-flex align-items-center">
+            <i class="bi bi-info-circle-fill fs-4 me-3"></i>
+            <div>
+                <strong>Informácia:</strong> Táto aplikácia slúži na vedenie daňovej evidencie podľa § 6 ods. 11 zákona č. 595/2003 Z. z. o dani z príjmov.
+                Podnikatelia vedúci daňovú evidenciu nie sú účtovnými jednotkami a nepodliehajú povinnostiam podľa zákona o účtovníctve.
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

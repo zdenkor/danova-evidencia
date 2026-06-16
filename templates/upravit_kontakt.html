@@ -1,0 +1,322 @@
+{% extends "base.html" %}
+
+{% block title %}Upraviť kontakt - Adresár{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0"><i class="bi bi-pencil"></i> Upraviť kontakt: {{ kontakt.nazov }}</h4>
+            </div>
+            <div class="card-body">
+                <form method="post" id="kontaktForm">
+                    <!-- Základné údaje -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h5 class="text-primary border-bottom pb-2"><i class="bi bi-info-circle"></i> Základné údaje</h5>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Typ kontaktu *</label>
+                            <select name="typ" class="form-select" required>
+                                <option value="odberatel" {{ 'selected' if kontakt.typ == 'odberatel' else '' }}>Odberateľ</option>
+                                <option value="dodavatel" {{ 'selected' if kontakt.typ == 'dodavatel' else '' }}>Dodávateľ</option>
+                                <option value="odberatel_dodavatel" {{ 'selected' if kontakt.typ == 'odberatel_dodavatel' else '' }}>Odberateľ + Dodávateľ</option>
+                                <option value="interny" {{ 'selected' if kontakt.typ == 'interny' else '' }}>Interný kontakt</option>
+                                <option value="osoba" {{ 'selected' if kontakt.typ == 'osoba' else '' }}>Fyzická osoba</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Názov / Meno a priezvisko *</label>
+                            <input type="text" name="nazov" class="form-control" required value="{{ kontakt.nazov }}"
+                                   placeholder="napr. ABC Company s.r.o.">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">IČO</label>
+                            <input type="text" name="ico" class="form-control" value="{{ kontakt.ico or '' }}"
+                                   placeholder="12345678">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">DIČ</label>
+                            <input type="text" name="dic" class="form-control" value="{{ kontakt.dic or '' }}"
+                                   placeholder="1234567890">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">IČ DPH</label>
+                            <input type="text" name="ic_dph" class="form-control" value="{{ kontakt.ic_dph or '' }}"
+                                   placeholder="SK1234567890">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <div class="form-check">
+                                <input type="checkbox" name="platca_dph" class="form-check-input" id="platca_dph" {{ 'checked' if kontakt.platca_dph else '' }}>
+                                <label class="form-check-label" for="platca_dph">Platca DPH</label>
+                            </div>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <div class="form-check">
+                                <input type="checkbox" name="je_aktivny" class="form-check-input" id="je_aktivny" {{ 'checked' if kontakt.je_aktivny else '' }}>
+                                <label class="form-check-label" for="je_aktivny">Kontakt je aktívny</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Sídlo -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <h5 class="text-primary border-bottom pb-2"><i class="bi bi-geo-alt"></i> Sídlo</h5>
+                        </div>
+                        <div class="col-md-8 mb-3">
+                            <label class="form-label">Ulica</label>
+                            <input type="text" name="sidlo_ulica" class="form-control" value="{{ kontakt.sidlo_ulica or '' }}"
+                                   placeholder="Hlavná">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Číslo</label>
+                            <input type="text" name="sidlo_cislo" class="form-control" value="{{ kontakt.sidlo_cislo or '' }}"
+                                   placeholder="123">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">PSČ</label>
+                            <input type="text" name="sidlo_psc" class="form-control" value="{{ kontakt.sidlo_psc or '' }}"
+                                   placeholder="010 01">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Mesto</label>
+                            <input type="text" name="sidlo_mesto" class="form-control" value="{{ kontakt.sidlo_mesto or '' }}"
+                                   placeholder="Bratislava">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Štát</label>
+                            <input type="text" name="sidlo_stat" class="form-control" value="{{ kontakt.sidlo_stat or 'Slovensko' }}">
+                        </div>
+                    </div>
+
+                    <!-- Doručovacie adresy -->
+                    <div class="row mb-4">
+                        <div class="col-12 d-flex justify-content-between align-items-center border-bottom pb-2 mb-3">
+                            <h5 class="text-primary mb-0"><i class="bi bi-truck"></i> Doručovacie adresy</h5>
+                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="pridatAdresu()">
+                                <i class="bi bi-plus"></i> Pridať adresu
+                            </button>
+                        </div>
+                        <div class="col-12">
+                            <div class="table-responsive">
+                                <table class="table table-bordered table-sm" id="adresyTabulka">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Názov</th>
+                                            <th>Ulica</th>
+                                            <th>Číslo</th>
+                                            <th>PSČ</th>
+                                            <th>Mesto</th>
+                                            <th>Štát</th>
+                                            <th>Aktívna</th>
+                                            <th></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <input type="hidden" name="adresa_count" id="adresa_count" value="0">
+                        </div>
+                    </div>
+
+                    <!-- Kontaktné osoby -->
+                    <div class="row mb-4">
+                        <div class="col-12 d-flex justify-content-between align-items-center border-bottom pb-2 mb-3">
+                            <h5 class="text-primary mb-0"><i class="bi bi-telephone"></i> Kontaktné osoby</h5>
+                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="pridatKontakt()">
+                                <i class="bi bi-plus"></i> Pridať kontakt
+                            </button>
+                        </div>
+                        <div class="col-12">
+                            <div class="table-responsive">
+                                <table class="table table-bordered table-sm" id="kontaktyTabulka">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Meno</th>
+                                            <th>Telefón</th>
+                                            <th>Email</th>
+                                            <th>Poznámka</th>
+                                            <th>Aktívny</th>
+                                            <th></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <input type="hidden" name="kontakt_count" id="kontakt_count" value="0">
+                        </div>
+                    </div>
+
+                    <!-- Bankové účty -->
+                    <div class="row mb-4">
+                        <div class="col-12 d-flex justify-content-between align-items-center border-bottom pb-2 mb-3">
+                            <h5 class="text-primary mb-0"><i class="bi bi-bank"></i> Bankové účty</h5>
+                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="pridatBanku()">
+                                <i class="bi bi-plus"></i> Pridať účet
+                            </button>
+                        </div>
+                        <div class="col-12">
+                            <div class="table-responsive">
+                                <table class="table table-bordered table-sm" id="bankyTabulka">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Názov</th>
+                                            <th>Banka</th>
+                                            <th>Účet</th>
+                                            <th>IBAN</th>
+                                            <th>SWIFT</th>
+                                            <th>Mena</th>
+                                            <th>Aktívny</th>
+                                            <th></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <input type="hidden" name="banka_count" id="banka_count" value="0">
+                        </div>
+                    </div>
+
+                    <!-- Poznámky -->
+                    <div class="row mb-4">
+                        <div class="col-12 d-flex justify-content-between align-items-center border-bottom pb-2 mb-3">
+                            <h5 class="text-primary mb-0"><i class="bi bi-sticky"></i> Poznámky</h5>
+                            <button type="button" class="btn btn-sm btn-outline-primary" onclick="pridatPoznamku()">
+                                <i class="bi bi-plus"></i> Pridať poznámku
+                            </button>
+                        </div>
+                        <div class="col-12">
+                            <div class="table-responsive">
+                                <table class="table table-bordered table-sm" id="poznamkyTabulka">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Text</th>
+                                            <th>Aktívna</th>
+                                            <th></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                    </tbody>
+                                </table>
+                            </div>
+                            <input type="hidden" name="poznamka_count" id="poznamka_count" value="0">
+                        </div>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-circle"></i> Uložiť zmeny
+                        </button>
+                        <a href="{{ url_for('adresar') }}" class="btn btn-outline-secondary">
+                            <i class="bi bi-x-circle"></i> Zrušiť
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let adresaIdx = 0, kontaktIdx = 0, bankaIdx = 0, poznamkaIdx = 0;
+
+function pridatAdresu(data) {
+    const idx = adresaIdx++;
+    document.getElementById('adresa_count').value = adresaIdx;
+    const tbody = document.querySelector('#adresyTabulka tbody');
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+        <td><input type="text" class="form-control form-control-sm" name="adresa_nazov_${idx}" value="${data?.nazov || ''}"></td>
+        <td><input type="text" class="form-control form-control-sm" name="adresa_ulica_${idx}" value="${data?.ulica || ''}"></td>
+        <td><input type="text" class="form-control form-control-sm" name="adresa_cislo_${idx}" value="${data?.cislo || ''}"></td>
+        <td><input type="text" class="form-control form-control-sm" name="adresa_psc_${idx}" value="${data?.psc || ''}"></td>
+        <td><input type="text" class="form-control form-control-sm" name="adresa_mesto_${idx}" value="${data?.mesto || ''}"></td>
+        <td><input type="text" class="form-control form-control-sm" name="adresa_stat_${idx}" value="${data?.stat || 'Slovensko'}"></td>
+        <td class="text-center"><input type="checkbox" class="form-check-input" name="adresa_aktivny_${idx}" ${data?.je_aktivny !== false ? 'checked' : ''}></td>
+        <td><button type="button" class="btn btn-sm btn-outline-danger" onclick="this.closest('tr').remove()"><i class="bi bi-trash"></i></button></td>
+    `;
+    tbody.appendChild(tr);
+}
+
+function pridatKontakt(data) {
+    const idx = kontaktIdx++;
+    document.getElementById('kontakt_count').value = kontaktIdx;
+    const tbody = document.querySelector('#kontaktyTabulka tbody');
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+        <td><input type="text" class="form-control form-control-sm" name="kontakt_meno_${idx}" value="${data?.meno || ''}"></td>
+        <td><input type="text" class="form-control form-control-sm" name="kontakt_telefon_${idx}" value="${data?.telefon || ''}"></td>
+        <td><input type="email" class="form-control form-control-sm" name="kontakt_email_${idx}" value="${data?.email || ''}"></td>
+        <td><input type="text" class="form-control form-control-sm" name="kontakt_poznamka_${idx}" value="${data?.poznamka || ''}"></td>
+        <td class="text-center"><input type="checkbox" class="form-check-input" name="kontakt_aktivny_${idx}" ${data?.je_aktivny !== false ? 'checked' : ''}></td>
+        <td><button type="button" class="btn btn-sm btn-outline-danger" onclick="this.closest('tr').remove()"><i class="bi bi-trash"></i></button></td>
+    `;
+    tbody.appendChild(tr);
+}
+
+function pridatBanku(data) {
+    const idx = bankaIdx++;
+    document.getElementById('banka_count').value = bankaIdx;
+    const tbody = document.querySelector('#bankyTabulka tbody');
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+        <td><input type="text" class="form-control form-control-sm" name="banka_nazov_${idx}" value="${data?.nazov || ''}"></td>
+        <td><input type="text" class="form-control form-control-sm" name="banka_nazov_banky_${idx}" value="${data?.banka || ''}"></td>
+        <td><input type="text" class="form-control form-control-sm" name="banka_ucet_${idx}" value="${data?.bankovy_ucet || ''}"></td>
+        <td><input type="text" class="form-control form-control-sm" name="banka_iban_${idx}" value="${data?.iban || ''}"></td>
+        <td><input type="text" class="form-control form-control-sm" name="banka_swift_${idx}" value="${data?.swift || ''}"></td>
+        <td><select class="form-select form-select-sm" name="banka_mena_${idx}">
+            <option value="EUR" ${(data?.mena||'EUR')==='EUR'?'selected':''}>EUR</option>
+            <option value="CZK" ${(data?.mena||'')==='CZK'?'selected':''}>CZK</option>
+            <option value="USD" ${(data?.mena||'')==='USD'?'selected':''}>USD</option>
+            <option value="GBP" ${(data?.mena||'')==='GBP'?'selected':''}>GBP</option>
+        </select></td>
+        <td class="text-center"><input type="checkbox" class="form-check-input" name="banka_aktivny_${idx}" ${data?.je_aktivny !== false ? 'checked' : ''}></td>
+        <td><button type="button" class="btn btn-sm btn-outline-danger" onclick="this.closest('tr').remove()"><i class="bi bi-trash"></i></button></td>
+    `;
+    tbody.appendChild(tr);
+}
+
+function pridatPoznamku(data) {
+    const idx = poznamkaIdx++;
+    document.getElementById('poznamka_count').value = poznamkaIdx;
+    const tbody = document.querySelector('#poznamkyTabulka tbody');
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+        <td><input type="text" class="form-control form-control-sm" name="poznamka_text_${idx}" value="${data?.text || ''}"></td>
+        <td class="text-center"><input type="checkbox" class="form-check-input" name="poznamka_aktivny_${idx}" ${data?.je_aktivny !== false ? 'checked' : ''}></td>
+        <td><button type="button" class="btn btn-sm btn-outline-danger" onclick="this.closest('tr').remove()"><i class="bi bi-trash"></i></button></td>
+    `;
+    tbody.appendChild(tr);
+}
+
+// Načítať existujúce dáta
+{% for a in adresy %}
+pridatAdresu({nazov: '{{ a.nazov or '' }}', ulica: '{{ a.ulica or '' }}', cislo: '{{ a.cislo or '' }}', psc: '{{ a.psc or '' }}', mesto: '{{ a.mesto or '' }}', stat: '{{ a.stat or 'Slovensko' }}', je_aktivny: {{ 'true' if a.je_aktivny else 'false' }}});
+{% endfor %}
+
+{% for k in kontakty %}
+pridatKontakt({meno: '{{ k.meno or '' }}', telefon: '{{ k.telefon or '' }}', email: '{{ k.email or '' }}', poznamka: '{{ k.poznamka or '' }}', je_aktivny: {{ 'true' if k.je_aktivny else 'false' }}});
+{% endfor %}
+
+{% for b in banky %}
+pridatBanku({nazov: '{{ b.nazov or '' }}', banka: '{{ b.banka or '' }}', bankovy_ucet: '{{ b.bankovy_ucet or '' }}', iban: '{{ b.iban or '' }}', swift: '{{ b.swift or '' }}', mena: '{{ b.mena or 'EUR' }}', je_aktivny: {{ 'true' if b.je_aktivny else 'false' }}});
+{% endfor %}
+
+{% for p in poznamky %}
+pridatPoznamku({text: '{{ p.text or '' }}', je_aktivny: {{ 'true' if p.je_aktivny else 'false' }}});
+{% endfor %}
+
+// Ak nie sú žiadne dáta, pridať prázdne riadky
+if (adresaIdx === 0) pridatAdresu();
+if (kontaktIdx === 0) pridatKontakt();
+if (bankaIdx === 0) pridatBanku();
+</script>
+{% endblock %}

@@ -1,0 +1,271 @@
+{% extends "base.html" %}
+
+{% block title %}{{ kontakt.nazov }} - Adresár{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-lg-10">
+        <!-- Hlavička kontaktu -->
+        <div class="card mb-4">
+            <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                <div>
+                    {% if kontakt.typ == 'odberatel' %}
+                    <span class="badge bg-success">Odberateľ</span>
+                    {% elif kontakt.typ == 'dodavatel' %}
+                    <span class="badge bg-danger">Dodávateľ</span>
+                    {% elif kontakt.typ == 'odberatel_dodavatel' %}
+                    <span class="badge bg-warning text-dark">Odberateľ + Dodávateľ</span>
+                    {% elif kontakt.typ == 'interny' %}
+                    <span class="badge bg-info">Interný</span>
+                    {% else %}
+                    <span class="badge bg-secondary">Osoba</span>
+                    {% endif %}
+                    <h2 class="mt-2 mb-0">{{ kontakt.nazov }}</h2>
+                </div>
+                <div class="d-flex gap-2">
+                    <a href="{{ url_for('upravit_kontakt', id=kontakt.id) }}" class="btn btn-outline-primary">
+                        <i class="bi bi-pencil"></i> Upraviť
+                    </a>
+                    <a href="{{ url_for('zmazat_kontakt', id=kontakt.id) }}" class="btn btn-outline-danger"
+                       onclick="return confirm('Naozaj chcete zmazať tento kontakt?')">
+                        <i class="bi bi-trash"></i> Zmazať
+                    </a>
+                </div>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h5 class="text-primary"><i class="bi bi-info-circle"></i> Identifikácia</h5>
+                        <table class="table table-borderless">
+                            <tbody>
+                                <tr><th>IČO:</th><td>{{ kontakt.ico or '-' }}</td></tr>
+                                <tr><th>DIČ:</th><td>{{ kontakt.dic or '-' }}</td></tr>
+                                <tr><th>IČ DPH:</th><td>{{ kontakt.ic_dph or '-' }}</td></tr>
+                                <tr><th>Platca DPH:</th><td>{{ 'Áno' if kontakt.platca_dph else 'Nie' }}</td></tr>
+                                <tr><th>Stav:</th><td><span class="badge bg-{{ 'success' if kontakt.je_aktivny else 'secondary' }}">{{ 'Aktívny' if kontakt.je_aktivny else 'Neaktívny' }}</span></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="col-md-6">
+                        <h5 class="text-primary"><i class="bi bi-geo-alt"></i> Sídlo</h5>
+                        <address>
+                            {{ kontakt.sidlo_ulica or '' }} {{ kontakt.sidlo_cislo or '' }}<br>
+                            {{ kontakt.sidlo_psc or '' }} {{ kontakt.sidlo_mesto or '' }}<br>
+                            {{ kontakt.sidlo_stat or 'Slovensko' }}
+                        </address>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Záložky -->
+        <ul class="nav nav-tabs mb-3" id="kontaktTabs" role="tablist">
+            <li class="nav-item" role="presentation">
+                <button class="nav-link active" id="adresy-tab" data-bs-toggle="tab" data-bs-target="#adresy" type="button" role="tab">
+                    <i class="bi bi-truck"></i> Doručovacie adresy <span class="badge bg-secondary">{{ adresy|length }}</span>
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="kontakty-tab" data-bs-toggle="tab" data-bs-target="#kontakty" type="button" role="tab">
+                    <i class="bi bi-telephone"></i> Kontakty <span class="badge bg-secondary">{{ kontakty|length }}</span>
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="banky-tab" data-bs-toggle="tab" data-bs-target="#banky" type="button" role="tab">
+                    <i class="bi bi-bank"></i> Bankové účty <span class="badge bg-secondary">{{ banky|length }}</span>
+                </button>
+            </li>
+            <li class="nav-item" role="presentation">
+                <button class="nav-link" id="poznamky-tab" data-bs-toggle="tab" data-bs-target="#poznamky" type="button" role="tab">
+                    <i class="bi bi-sticky"></i> Poznámky <span class="badge bg-secondary">{{ poznamky|length }}</span>
+                </button>
+            </li>
+        </ul>
+
+        <div class="tab-content" id="kontaktTabsContent">
+            <!-- Doručovacie adresy -->
+            <div class="tab-pane fade show active" id="adresy" role="tabpanel">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class="bi bi-truck"></i> Doručovacie adresy</h5>
+                    </div>
+                    <div class="card-body">
+                        {% if adresy %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Názov</th>
+                                        <th>Ulica</th>
+                                        <th>Číslo</th>
+                                        <th>PSČ</th>
+                                        <th>Mesto</th>
+                                        <th>Štát</th>
+                                        <th>Stav</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for a in adresy %}
+                                    <tr class="{{ 'text-muted' if not a.je_aktivny else '' }}">
+                                        <td>{{ a.nazov or '-' }}</td>
+                                        <td>{{ a.ulica or '-' }}</td>
+                                        <td>{{ a.cislo or '-' }}</td>
+                                        <td>{{ a.psc or '-' }}</td>
+                                        <td>{{ a.mesto or '-' }}</td>
+                                        <td>{{ a.stat or 'Slovensko' }}</td>
+                                        <td>
+                                            <span class="badge bg-{{ 'success' if a.je_aktivny else 'secondary' }}">
+                                                {{ 'Aktívna' if a.je_aktivny else 'Neaktívna' }}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <p class="text-muted">Žiadne doručovacie adresy.</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Kontaktné osoby -->
+            <div class="tab-pane fade" id="kontakty" role="tabpanel">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-telephone"></i> Kontaktné osoby</h5>
+                    </div>
+                    <div class="card-body">
+                        {% if kontakty %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Meno</th>
+                                        <th>Telefón</th>
+                                        <th>Email</th>
+                                        <th>Poznámka</th>
+                                        <th>Stav</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for k in kontakty %}
+                                    <tr class="{{ 'text-muted' if not k.je_aktivny else '' }}">
+                                        <td>{{ k.meno or '-' }}</td>
+                                        <td>{{ k.telefon or '-' }}</td>
+                                        <td>{{ k.email or '-' }}</td>
+                                        <td>{{ k.poznamka or '-' }}</td>
+                                        <td>
+                                            <span class="badge bg-{{ 'success' if k.je_aktivny else 'secondary' }}">
+                                                {{ 'Aktívny' if k.je_aktivny else 'Neaktívny' }}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <p class="text-muted">Žiadne kontaktné osoby.</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bankové účty -->
+            <div class="tab-pane fade" id="banky" role="tabpanel">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-bank"></i> Bankové účty</h5>
+                    </div>
+                    <div class="card-body">
+                        {% if banky %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Názov</th>
+                                        <th>Banka</th>
+                                        <th>Účet</th>
+                                        <th>IBAN</th>
+                                        <th>SWIFT</th>
+                                        <th>Mena</th>
+                                        <th>Stav</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for b in banky %}
+                                    <tr class="{{ 'text-muted' if not b.je_aktivny else '' }}">
+                                        <td>{{ b.nazov or '-' }}</td>
+                                        <td>{{ b.banka or '-' }}</td>
+                                        <td>{{ b.bankovy_ucet or '-' }}</td>
+                                        <td><code>{{ b.iban or '-' }}</code></td>
+                                        <td>{{ b.swift or '-' }}</td>
+                                        <td>{{ b.mena or 'EUR' }}</td>
+                                        <td>
+                                            <span class="badge bg-{{ 'success' if b.je_aktivny else 'secondary' }}">
+                                                {{ 'Aktívny' if b.je_aktivny else 'Neaktívny' }}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <p class="text-muted">Žiadne bankové účty.</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Poznámky -->
+            <div class="tab-pane fade" id="poznamky" role="tabpanel">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0"><i class="bi bi-sticky"></i> Poznámky</h5>
+                    </div>
+                    <div class="card-body">
+                        {% if poznamky %}
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Text</th>
+                                        <th>Dátum</th>
+                                        <th>Stav</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for p in poznamky %}
+                                    <tr class="{{ 'text-muted' if not p.je_aktivny else '' }}">
+                                        <td>{{ p.text or '-' }}</td>
+                                        <td>{{ p.created_at[:10] if p.created_at else '-' }}</td>
+                                        <td>
+                                            <span class="badge bg-{{ 'success' if p.je_aktivny else 'secondary' }}">
+                                                {{ 'Aktívna' if p.je_aktivny else 'Neaktívna' }}
+                                            </span>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                        {% else %}
+                        <p class="text-muted">Žiadne poznámky.</p>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="mt-3">
+    <a href="{{ url_for('adresar') }}" class="btn btn-outline-secondary">
+        <i class="bi bi-arrow-left"></i> Späť do adresára
+    </a>
+</div>
+{% endblock %}
+
