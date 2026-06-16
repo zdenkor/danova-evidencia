@@ -150,8 +150,98 @@
                         </button>
                     </div>
                 </form>
+
+                <!-- Import / Export -->
+                <hr class="my-4">
+                <h5 class="text-primary mb-3"><i class="bi bi-arrow-left-right"></i> Import / Export dát</h5>
+                
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <h6 class="card-title"><i class="bi bi-download"></i> Export</h6>
+                                <p class="card-text text-muted small">
+                                    Exportujte všetky dáta do JSON formátu s verziovaním schémy.
+                                </p>
+                                <a href="{{ url_for('export_json') }}" class="btn btn-outline-primary btn-sm">
+                                    <i class="bi bi-download"></i> Stiahnuť export
+                                </a>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <div class="card h-100">
+                            <div class="card-body">
+                                <h6 class="card-title"><i class="bi bi-upload"></i> Import</h6>
+                                <p class="card-text text-muted small">
+                                    Importujte dáta z JSON súboru. Systém skontroluje kompatibilitu schémy.
+                                </p>
+                                <form method="post" action="{{ url_for('import_json') }}" enctype="multipart/form-data" id="importForm">
+                                    <div class="mb-2">
+                                        <select name="import_mode" class="form-select form-select-sm">
+                                            <option value="merge">Pridať k existujúcim (merge)</option>
+                                            <option value="replace">Nahradiť existujúce (replace)</option>
+                                        </select>
+                                    </div>
+                                    <div class="input-group input-group-sm">
+                                        <input type="file" name="file" class="form-control" accept=".json" id="importFile">
+                                        <button type="submit" class="btn btn-outline-primary" id="importBtn" disabled>
+                                            <i class="bi bi-upload"></i> Importovať
+                                        </button>
+                                    </div>
+                                    <div id="importValidation" class="mt-2 small"></div>
+                                </form>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 </div>
+
+<script>
+document.getElementById('importFile').addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    const btn = document.getElementById('importBtn');
+    const validation = document.getElementById('importValidation');
+    
+    if (!file) {
+        btn.disabled = true;
+        validation.innerHTML = '';
+        return;
+    }
+    
+    const reader = new FileReader();
+    reader.onload = function(event) {
+        try {
+            const data = JSON.parse(event.target.result);
+            
+            // Validácia na klientovi
+            if (!data.format_version) {
+                validation.innerHTML = '<span class="text-danger"><i class="bi bi-x-circle"></i> Neplatný formát</span>';
+                btn.disabled = true;
+                return;
+            }
+            
+            let html = '<span class="text-success"><i class="bi bi-check-circle"></i> Formát OK</span>';
+            
+            if (data.schema_version) {
+                html += '<br><small class="text-muted">Verzia schémy: ' + data.schema_version + '</small>';
+            }
+            if (data.export_date) {
+                html += '<br><small class="text-muted">Exportované: ' + data.export_date + '</small>';
+            }
+            
+            validation.innerHTML = html;
+            btn.disabled = false;
+            
+        } catch (err) {
+            validation.innerHTML = '<span class="text-danger"><i class="bi bi-x-circle"></i> Neplatný JSON</span>';
+            btn.disabled = true;
+        }
+    };
+    reader.readAsText(file);
+});
+</script>
 {% endblock %}

@@ -23,9 +23,28 @@ def get_db():
     return conn
 
 
+def _add_column_if_not_exists(tabulka, stlpec, typ):
+    """Bezpečne pridá stĺpec ak ešte neexistuje."""
+    db = get_db()
+    cursor = db.execute(f"PRAGMA table_info({tabulka})")
+    columns = [row['name'] for row in cursor.fetchall()]
+    if stlpec not in columns:
+        db.execute(f'ALTER TABLE {tabulka} ADD COLUMN {stlpec} {typ}')
+        db.commit()
+    db.close()
+
+
 def init_db():
     # Run migrations first
     migrate(DB_PATH)
+    
+    # Add columns safely (SQLite doesn't support IF NOT EXISTS in ALTER TABLE)
+    _add_column_if_not_exists('prijmy', 'sadzba_dph_zakladna', 'REAL')
+    _add_column_if_not_exists('prijmy', 'sadzba_dph_znizena', 'REAL')
+    _add_column_if_not_exists('prijmy', 'sadzba_dph_super_znizena', 'REAL')
+    _add_column_if_not_exists('vydavky', 'sadzba_dph_zakladna', 'REAL')
+    _add_column_if_not_exists('vydavky', 'sadzba_dph_znizena', 'REAL')
+    _add_column_if_not_exists('vydavky', 'sadzba_dph_super_znizena', 'REAL')
     
     conn = get_db()
     cursor = conn.cursor()
@@ -835,9 +854,14 @@ def get_legal_limit(kod):
     item = get_system_catalog_item('limit', kod)
     return item['hodnota_cislo'] if item else None
 
-def update_system_catalog(id, nazov, hodnota=None, hodnota_cislo=None, popis=None, je_aktivny=None):
-    """Upraví položku systémového katalógu."""
+def update_system_catalog(id, nazov, hodnota=None, hodnota_cislo=None, popis=None, je_aktivny=None, platnost_od=None):
+    """Upraví položku systémového katalógu s historickým sledovaním."""
     db = get_db()
+    
+    # Get old value for history
+    cursor = db.execute('SELECT * FROM system_catalog WHERE id = ?', (id,))
+    old = cursor.fetchone()
+    
     fields = []
     params = []
     if nazov is not None:
@@ -855,12 +879,63 @@ def update_system_catalog(id, nazov, hodnota=None, hodnota_cislo=None, popis=Non
     if je_aktivny is not None:
         fields.append('je_aktivny = ?')
         params.append(je_aktivny)
+    if platnost_od is not None:
+        fields.append('platnost_od = ?')
+        params.append(platnost_od)
     if fields:
         query = 'UPDATE system_catalog SET ' + ', '.join(fields) + ' WHERE id = ?'
         params.append(id)
         db.execute(query, params)
         db.commit()
+        
+        # Record history if numeric value changed
+        if old and hodnota_cislo is not None and old['hodnota_cislo'] != hodnota_cislo:
+            db.execute('''
+                INSERT INTO historicka_hodnota (tabulka, stlpec, zaznam_id, hodnota_cislo, platnost_od, dovody_zmeny)
+                VALUES (?, ?, ?, ?, ?, ?)
+            ''', ('system_catalog', 'hodnota_cislo', id, old['hodnota_cislo'], old['platnost_od'], 'Zmena legislatívy'))
+            db.commit()
     db.close()
+
+
+def get_effective_value(kategoria, kod, datum=None):
+    """Vráti platnú hodnotu pre daný dátum (default: dnes)."""
+    if datum is None:
+        datum = datetime.now().strftime('%Y-%m-%d')
+    
+    db = get_db()
+    cursor = db.execute('''
+        SELECT * FROM system_catalog 
+        WHERE kategoria = ? AND kod = ? AND je_aktivny = 1
+        AND (platnost_od IS NULL OR platnost_od <= ?)
+        AND (platnost_do IS NULL OR platnost_do >= ?)
+        ORDER BY platnost_od DESC LIMIT 1
+    ''', (kategoria, kod, datum, datum))
+    item = cursor.fetchone()
+    db.close()
+    return item
+
+
+def get_dph_sadzba_pre_datum(sadzba_kod, datum=None):
+    """Vráti DPH sadzbu platnú pre daný dátum."""
+    item = get_effective_value('dph_sadzba', sadzba_kod, datum)
+    return item['hodnota_cislo'] if item else None
+
+
+def get_historicke_hodnoty(tabulka, zaznam_id=None, limit=50):
+    """Vráti históriu zmien hodnôt."""
+    db = get_db()
+    query = 'SELECT * FROM historicka_hodnota WHERE tabulka = ?'
+    params = [tabulka]
+    if zaznam_id:
+        query += ' AND zaznam_id = ?'
+        params.append(zaznam_id)
+    query += ' ORDER BY created_at DESC LIMIT ?'
+    params.append(limit)
+    cursor = db.execute(query, params)
+    items = cursor.fetchall()
+    db.close()
+    return items
 
 
 # ==================== FUNKCIE PRE AGENDY ====================
