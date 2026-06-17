@@ -938,6 +938,127 @@ def get_historicke_hodnoty(tabulka, zaznam_id=None, limit=50):
     return items
 
 
+def ulozit_dph_sadzby_do_dokladu(doklad_id, tabulka, datum=None):
+    """
+    Uloží aktuálne DPH sadzby priamo do dokladu pre právnu istotu.
+    
+    Args:
+        doklad_id: ID dokladu
+        tabulka: 'prijmy' alebo 'vydavky'
+        datum: dátum pre ktorý získať sadzby (default: dnes)
+    """
+    if datum is None:
+        datum = datetime.now().strftime('%Y-%m-%d')
+    
+    db = get_db()
+    
+    # Získaj aktuálne sadzby
+    zakladna = get_dph_sadzba_pre_datum('zakladna', datum) or 23.0
+    znizena = get_dph_sadzba_pre_datum('znizena', datum) or 19.0
+    super_znizena = get_dph_sadzba_pre_datum('super_znizena', datum) or 5.0
+    
+    # Ulož do dokladu
+    db.execute(f'''
+        UPDATE {tabulka} SET
+            sadzba_dph_zakladna = ?,
+            sadzba_dph_znizena = ?,
+            sadzba_dph_super_znizena = ?
+        WHERE id = ?
+    ''', (zakladna, znizena, super_znizena, doklad_id))
+    db.commit()
+    db.close()
+
+
+def ulozit_kontakt_info_do_dokladu(doklad_id, tabulka, kontakt_id=None, adresa_id=None, kontaktna_osoba_id=None):
+    """
+    Uloží aktuálne kontaktné informácie priamo do dokladu.
+    Toto zabezpečí, že doklad obsahuje presné údaje z času vystavenia.
+    
+    Args:
+        doklad_id: ID dokladu
+        tabulka: 'prijmy' alebo 'vydavky'
+        kontakt_id: ID kontaktu z adresára
+        adresa_id: ID doručovacej adresy
+        kontaktna_osoba_id: ID kontaktnej osoby
+    """
+    if not kontakt_id:
+        return
+    
+    db = get_db()
+    
+    # Načítaj kontakt
+    kontakt = db.execute('SELECT * FROM adresar WHERE id = ?', (kontakt_id,)).fetchone()
+    if not kontakt:
+        db.close()
+        return
+    
+    # Urči stĺpce podľa tabuľky
+    if tabulka == 'prijmy':
+        prefix = 'odberatel'
+        db.execute('UPDATE prijmy SET odberatel_id = ? WHERE id = ?', (kontakt_id, doklad_id))
+    else:
+        prefix = 'dodavatel'
+        db.execute('UPDATE vydavky SET dodavatel_id = ? WHERE id = ?', (kontakt_id, doklad_id))
+    
+    # Ulož základné údaje
+    db.execute(f'''
+        UPDATE {tabulka} SET
+            {prefix}_nazov = ?,
+            {prefix}_ico = ?,
+            {prefix}_dic = ?,
+            {prefix}_ic_dph = ?,
+            {prefix}_adresa = ?,
+            {prefix}_mesto = ?,
+            {prefix}_psc = ?,
+            {prefix}_stat = ?
+        WHERE id = ?
+    ''', (
+        kontakt['nazov'],
+        kontakt['ico'] or '',
+        kontakt['dic'] or '',
+        kontakt['ic_dph'] or '',
+        f"{kontakt['sidlo_ulica'] or ''} {kontakt['sidlo_cislo'] or ''}".strip(),
+        kontakt['sidlo_mesto'] or '',
+        kontakt['sidlo_psc'] or '',
+        kontakt['sidlo_stat'] or 'Slovensko',
+        doklad_id
+    ))
+    
+    # Ak je zvolená doručovacia adresa, ulož ju
+    if adresa_id:
+        adresa = db.execute('SELECT * FROM adresar_dorucovacie_adresy WHERE id = ?', (adresa_id,)).fetchone()
+        if adresa:
+            # Uložíme do poznámky alebo špeciálneho stĺpca
+            db.execute(f'''
+                UPDATE {tabulka} 
+                SET poznamka = COALESCE(poznamka, '') || '\nDoručovacia adresa: ' || ? || ', ' || ? || ' ' || ? || ', ' || ?
+                WHERE id = ?
+            ''', (
+                f"{adresa['ulica'] or ''} {adresa['cislo'] or ''}".strip(),
+                adresa['psc'] or '',
+                adresa['mesto'] or '',
+                adresa['stat'] or 'Slovensko',
+                doklad_id
+            ))
+    
+    # Ak je zvolená kontaktná osoba, ulož ju
+    if kontaktna_osoba_id:
+        osoba = db.execute('SELECT * FROM adresar_kontakty WHERE id = ?', (kontaktna_osoba_id,)).fetchone()
+        if osoba:
+            db.execute(f'''
+                UPDATE {tabulka} 
+                SET poznamka = COALESCE(poznamka, '') || '\nKontaktná osoba: ' || ? || ' (' || ? || ')'
+                WHERE id = ?
+            ''', (
+                osoba['meno'] or '',
+                osoba['email'] or osoba['telefon'] or '',
+                doklad_id
+            ))
+    
+    db.commit()
+    db.close()
+
+
 # ==================== FUNKCIE PRE AGENDY ====================
 
 def get_agendy_dir():
