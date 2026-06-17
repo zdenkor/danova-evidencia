@@ -7,7 +7,7 @@ from datetime import datetime
 from migrations import migrate, get_current_version
 
 # Globálna premenná pre aktuálnu databázu - môže sa zmeniť podľa agendy
-DEFAULT_DB_PATH = os.path.join(os.path.dirname(__file__), 'danova_evidencia.db')
+DEFAULT_DB_PATH = os.environ.get('DB_PATH', os.path.join(os.path.dirname(__file__), 'danova_evidencia.db'))
 DB_PATH = DEFAULT_DB_PATH
 
 
