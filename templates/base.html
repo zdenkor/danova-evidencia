@@ -186,13 +186,20 @@
                     <i class="bi bi-building"></i>
                     <strong>{{ nazov_firmy or 'Neznáma firma' }}</strong>
                 </div>
-                <div class="d-flex align-items-center gap-3">
+                <div class="d-flex flex-column align-items-end gap-0">
                     <form method="post" action="{{ url_for('nastavit_datum') }}" class="d-flex align-items-center gap-2 mb-0" id="statusBarDateForm">
                         <span class="date-label" title="Dátum uskutočnenia účtovného prípadu" data-bs-toggle="tooltip" data-bs-placement="top"><i class="bi bi-calendar3"></i> DUÚP:</span>
                         <input type="date" name="datum" class="form-control form-control-sm date-input" value="{{ aktualny_datum }}"
                                id="statusBarDatePicker">
                         <span class="date-label" id="statusBarDateDisplay"><span class="date-prefix">Aktuálny dátum: </span><span class="date-value">{{ format_datum(aktualny_datum) }}</span></span>
                     </form>
+                    {% if app_verzia or db_verzia %}
+                    <span class="version-info">
+                        <i class="bi bi-git"></i>
+                        {% if app_verzia %}Verzia: {{ app_verzia }}{% endif %}
+                        {% if db_verzia %} | DB: {{ db_verzia }}{% endif %}
+                    </span>
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -200,7 +207,7 @@
 
     <footer class="footer">
         <div class="container text-center">
-            <small>Daňová evidencia © 2026 | Podľa zákona č. 595/2003 Z. z. o dani z príjmov{% if app_verzia %} | Verzia: {{ app_verzia }}{% endif %}{% if db_verzia %} | DB: {{ db_verzia }}{% endif %}</small>
+            <small>Daňová evidencia © 2026 | Podľa zákona č. 595/2003 Z. z. o dani z príjmov</small>
         </div>
     </footer>
 
