@@ -19,6 +19,33 @@ import requests
 from bs4 import BeautifulSoup
 import os
 import json
+import subprocess
+
+def get_app_version():
+    """Získa verziu aplikácie z git tagu alebo vráti default."""
+    try:
+        # Pokús sa získať posledný git tag
+        result = subprocess.run(
+            ['git', 'describe', '--tags', '--always'],
+            capture_output=True, text=True, cwd=os.path.dirname(__file__)
+        )
+        if result.returncode == 0:
+            return result.stdout.strip()
+    except:
+        pass
+    
+    # Fallback - načítaj z VERSION.md
+    try:
+        version_file = os.path.join(os.path.dirname(__file__), 'VERSION.md')
+        with open(version_file, 'r', encoding='utf-8') as f:
+            for line in f:
+                if line.startswith('## '):
+                    return line[3:].strip()
+    except:
+        pass
+    
+    return 'unknown'
+
 
 app = Flask(__name__)
 app.secret_key = 'danova-evidencia-secret-key-2026'
@@ -197,6 +224,9 @@ def inject_globals():
 
     # Database version
     db_verzia = get_current_version(DEFAULT_DB_PATH)
+    
+    # App version from git tags
+    app_verzia = get_app_version()
 
     return {
         'now': datetime.now(),
@@ -210,7 +240,8 @@ def inject_globals():
         'MESIACE_SK': MESIACE_SK,
         'MESIACE_SK_KRATKE': MESIACE_SK_KRATKE,
         'zobrazenie': zobrazenie,
-        'db_verzia': db_verzia
+        'db_verzia': db_verzia,
+        'app_verzia': app_verzia
     }
 
 
