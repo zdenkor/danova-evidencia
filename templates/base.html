@@ -85,6 +85,11 @@
                         </a>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-link {% if request.endpoint in ['objednavky', 'pridat_objednavku', 'upravit_objednavku'] %}active{% endif %}" href="{{ url_for('objednavky') }}">
+                            <i class="bi bi-cart sidebar-icon"></i>Objednávky
+                        </a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link {% if request.endpoint in ['majetok', 'pridat_majetok'] %}active{% endif %}" href="{{ url_for('majetok') }}">
                             <i class="bi bi-pc-display sidebar-icon"></i>Majetok
                         </a>

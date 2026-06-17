@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+
+{% block title %}Objednávky - Daňová evidencia{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h2><i class="bi bi-cart"></i> Objednávky</h2>
+    <a href="{{ url_for('pridat_objednavku') }}" class="btn btn-primary">
+        <i class="bi bi-plus-circle"></i> Pridať objednávku
+    </a>
+</div>
+
+<!-- Štatistiky -->
+<div class="row mb-4">
+    <div class="col-md-3 mb-2">
+        <div class="card border-primary">
+            <div class="card-body text-center py-2">
+                <div class="text-primary fw-bold fs-4">{{ stats.nova or 0 }}</div>
+                <div class="small text-muted">Nové</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-2">
+        <div class="card border-info">
+            <div class="card-body text-center py-2">
+                <div class="text-info fw-bold fs-4">{{ stats.potvrdena or 0 }}</div>
+                <div class="small text-muted">Potvrdené</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-2">
+        <div class="card border-success">
+            <div class="card-body text-center py-2">
+                <div class="text-success fw-bold fs-4">{{ stats.vybavena or 0 }}</div>
+                <div class="small text-muted">Vybavené</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3 mb-2">
+        <div class="card border-secondary">
+            <div class="card-body text-center py-2">
+                <div class="text-secondary fw-bold fs-4">{{ stats.stornovana or 0 }}</div>
+                <div class="small text-muted">Stornované</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filter -->
+<div class="card mb-4">
+    <div class="card-body py-2">
+        <form method="get" class="row g-2 align-items-end">
+            <div class="col-md-3">
+                <label class="form-label small">Stav</label>
+                <select name="stav" class="form-select form-select-sm">
+                    <option value="" {% if not stav_filter %}selected{% endif %}>Všetky</option>
+                    <option value="nova" {% if stav_filter == 'nova' %}selected{% endif %}>Nová</option>
+                    <option value="potvrdena" {% if stav_filter == 'potvrdena' %}selected{% endif %}>Potvrdená</option>
+                    <option value="vybavena" {% if stav_filter == 'vybavena' %}selected{% endif %}>Vybavená</option>
+                    <option value="stornovana" {% if stav_filter == 'stornovana' %}selected{% endif %}>Stornovaná</option>
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label small">Rok</label>
+                <select name="rok" class="form-select form-select-sm">
+                    {% for r in range(2024, 2028) %}
+                    <option value="{{ r }}" {% if rok == r %}selected{% endif %}>{{ r }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-outline-primary btn-sm w-100">
+                    <i class="bi bi-funnel"></i> Filtrovať
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Tabuľka objednávok -->
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Číslo</th>
+                        <th>Dátum</th>
+                        <th>Odberateľ / Dodávateľ</th>
+                        <th class="text-end">Suma</th>
+                        <th>Stav</th>
+                        <th class="text-end">Akcie</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for o in objednavky %}
+                    <tr>
+                        <td><strong>{{ o.cislo_objednavky }}</strong></td>
+                        <td>{{ format_datum(o.datum_vystavenia) }}</td>
+                        <td>
+                            {% if o.odberatel_nazov %}
+                            <div><span class="badge bg-primary">O</span> {{ o.odberatel_nazov }}</div>
+                            {% endif %}
+                            {% if o.dodavatel_nazov %}
+                            <div><span class="badge bg-secondary">D</span> {{ o.dodavatel_nazov }}</div>
+                            {% endif %}
+                        </td>
+                        <td class="text-end fw-bold">{{ format_mena(o.celkova_suma) }}</td>
+                        <td>
+                            {% if o.stav == 'nova' %}
+                            <span class="badge bg-primary">Nová</span>
+                            {% elif o.stav == 'potvrdena' %}
+                            <span class="badge bg-info">Potvrdená</span>
+                            {% elif o.stav == 'vybavena' %}
+                            <span class="badge bg-success">Vybavená</span>
+                            {% elif o.stav == 'stornovana' %}
+                            <span class="badge bg-secondary">Stornovaná</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-end">
+                            <div class="btn-group btn-group-sm">
+                                <a href="{{ url_for('upravit_objednavku', id=o.id) }}" class="btn btn-outline-primary" title="Upraviť">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                <button type="button" class="btn btn-outline-primary dropdown-toggle dropdown-toggle-split" data-bs-toggle="dropdown"></button>
+                                <ul class="dropdown-menu dropdown-menu-end">
+                                    <li><a class="dropdown-item" href="{{ url_for('zmenit_stav_objednavky_route', id=o.id, stav='nova') }}"><i class="bi bi-circle text-primary"></i> Označiť ako nová</a></li>
+                                    <li><a class="dropdown-item" href="{{ url_for('zmenit_stav_objednavky_route', id=o.id, stav='potvrdena') }}"><i class="bi bi-check-circle text-info"></i> Označiť ako potvrdená</a></li>
+                                    <li><a class="dropdown-item" href="{{ url_for('zmenit_stav_objednavky_route', id=o.id, stav='vybavena') }}"><i class="bi bi-check-circle-fill text-success"></i> Označiť ako vybavená</a></li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><a class="dropdown-item" href="{{ url_for('zmenit_stav_objednavky_route', id=o.id, stav='stornovana') }}"><i class="bi bi-x-circle text-secondary"></i> Označiť ako stornovaná</a></li>
+                                    <li><hr class="dropdown-divider"></li>
+                                    <li><a class="dropdown-item text-danger" href="{{ url_for('zmazat_objednavku_route', id=o.id) }}" onclick="return confirm('Naozaj zmazať objednávku?')"><i class="bi bi-trash"></i> Zmazať</a></li>
+                                </ul>
+                            </div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="6" class="text-center text-muted py-4">
+                            <i class="bi bi-inbox fs-1"></i><br>
+                            Žiadne objednávky
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}
