@@ -1189,15 +1189,14 @@ def zmazat_zavazok(id):
 
 # ==================== OBJEDNÁVKY ====================
 
-@app.route('/objednavky')
-def objednavky():
-    """Zoznam objednávok s filtrom podľa stavu a roka."""
+@app.route('/objednavky/prijate')
+def prijate_objednavky():
+    """Zoznam prijatých objednávok (od zákazníka, som dodávateľ)."""
     stav_filter = request.args.get('stav', '')
     rok = request.args.get('rok', datetime.now().year, type=int)
     
-    objednavky_data = get_objednavky(stav=stav_filter or None, rok=rok)
+    objednavky_data = get_objednavky(stav=stav_filter or None, rok=rok, typ='prijata')
     
-    # Štatistiky
     stats = {}
     for s in ['nova', 'potvrdena', 'vybavena', 'stornovana']:
         stats[s] = len([o for o in objednavky_data if o['stav'] == s])
@@ -1206,12 +1205,49 @@ def objednavky():
                          objednavky=objednavky_data, 
                          rok=rok, 
                          stav_filter=stav_filter,
-                         stats=stats)
+                         stats=stats,
+                         typ='prijata',
+                         typ_nazov='Prijaté objednávky',
+                         typ_popis='Záväzná požiadavka od zákazníka. Vystupujete ako dodávateľ.',
+                         typ_icon='bi-inbox')
 
 
-@app.route('/pridat-objednavku', methods=['GET', 'POST'])
-def pridat_objednavku():
-    """Pridá novú objednávku."""
+@app.route('/objednavky/vystavene')
+def vystavene_objednavky():
+    """Zoznam vystavených objednávok (pre dodávateľa, som odberateľ)."""
+    stav_filter = request.args.get('stav', '')
+    rok = request.args.get('rok', datetime.now().year, type=int)
+    
+    objednavky_data = get_objednavky(stav=stav_filter or None, rok=rok, typ='vystavena')
+    
+    stats = {}
+    for s in ['nova', 'potvrdena', 'vybavena', 'stornovana']:
+        stats[s] = len([o for o in objednavky_data if o['stav'] == s])
+    
+    return render_template('objednavky.html', 
+                         objednavky=objednavky_data, 
+                         rok=rok, 
+                         stav_filter=stav_filter,
+                         stats=stats,
+                         typ='vystavena',
+                         typ_nazov='Vystavené objednávky',
+                         typ_popis='Dokument odoslaný dodávateľovi. Vystupujete ako odberateľ.',
+                         typ_icon='bi-send')
+
+
+@app.route('/objednavky')
+def objednavky():
+    """Presmerovanie na prijaté objednávky ako default."""
+    return redirect(url_for('prijate_objednavky'))
+
+
+@app.route('/pridat-objednavku/<typ>', methods=['GET', 'POST'])
+def pridat_objednavku(typ):
+    """Pridá novú objednávku - prijatú alebo vystavenú."""
+    if typ not in ['prijata', 'vystavena']:
+        flash('Neplatný typ objednávky!', 'danger')
+        return redirect(url_for('objednavky'))
+    
     if request.method == 'POST':
         # Vypočítať sumy z položiek
         zaklad_dane = float(request.form.get('zaklad_dane', 0))
@@ -1241,6 +1277,7 @@ def pridat_objednavku():
             'dodavatel_psc': request.form.get('dodavatel_psc', ''),
             'dodavatel_stat': request.form.get('dodavatel_stat', 'Slovensko'),
             'stav': 'nova',
+            'typ': typ,
             'suma': float(request.form.get('suma', 0)),
             'dph': dph_suma,
             'zaklad_dane': zaklad_dane,
@@ -1281,7 +1318,7 @@ def pridat_objednavku():
             flash(f'Chyba pri pridávaní objednávky: {chyba}', 'danger')
         else:
             flash('Objednávka bola úspešne pridaná!', 'success')
-        return redirect(url_for('objednavky'))
+        return redirect(url_for('prijate_objednavky' if typ == 'prijata' else 'vystavene_objednavky'))
     
     db = get_db()
     # Načítať kontakty
@@ -1299,7 +1336,7 @@ def pridat_objednavku():
     db.close()
     
     jednotky = [dict(j) for j in get_jednotky()]
-    return render_template('pridat_objednavku.html', kontakty=kontakty, jednotky=jednotky)
+    return render_template('pridat_objednavku.html', kontakty=kontakty, jednotky=jednotky, typ=typ)
 
 
 @app.route('/upravit-objednavku/<int:id>', methods=['GET', 'POST'])
@@ -1333,6 +1370,7 @@ def upravit_objednavku(id):
             'dodavatel_psc': request.form.get('dodavatel_psc', ''),
             'dodavatel_stat': request.form.get('dodavatel_stat', 'Slovensko'),
             'stav': request.form.get('stav', 'nova'),
+            'typ': request.form.get('typ', 'prijata'),
             'suma': float(request.form.get('suma', 0)),
             'dph': dph_suma,
             'zaklad_dane': zaklad_dane,
@@ -1373,7 +1411,7 @@ def upravit_objednavku(id):
             flash(f'Chyba pri úprave objednávky: {chyba}', 'danger')
         else:
             flash('Objednávka bola upravená!', 'success')
-        return redirect(url_for('objednavky'))
+        return redirect(url_for('prijate_objednavky' if data['typ'] == 'prijata' else 'vystavene_objednavky'))
     
     objednavka = get_objednavka(id)
     if not objednavka:

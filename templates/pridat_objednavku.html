@@ -7,10 +7,11 @@
     <div class="col-lg-10">
         <div class="card">
             <div class="card-header bg-primary text-white">
-                <h4 class="mb-0"><i class="bi bi-cart-plus"></i> Pridať objednávku</h4>
+                <h4 class="mb-0"><i class="bi bi-cart-plus"></i> Pridať {% if typ == 'vystavena' %}vystavenú{% else %}prijatú{% endif %} objednávku</h4>
             </div>
             <div class="card-body">
                 <form method="post" id="objednavkaForm">
+                    <input type="hidden" name="typ" value="{{ typ }}">
                     <!-- Základné údaje -->
                     <div class="row mb-3">
                         <div class="col-md-3 mb-2">
