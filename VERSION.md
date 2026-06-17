@@ -6,6 +6,20 @@ Formát verzie: `RRRR-MM-DD-xxxx`
 
 ---
 
+## 2026-06-17-0007
+
+### Pridané
+- Účtovný mód: Zjednodušená evidencia / Jednoduché účtovníctvo (FUTURE)
+- Zobrazenie aktuálneho módu v stavovom riadku
+- Objednávky sa zobrazujú iba v móde Jednoduché účtovníctvo
+- Dynamické DPH sadzby zo systémových katalógov vo formulároch
+- Select zobrazuje percento + popis, po výbere iba percento
+- Systémové katalógy pridané do menu Nastavenia
+- Fix: Modal okno pre editáciu katalógov stabilné (bez animácie)
+- Fix: Formát dátumu "Platnosť od" v systémových katalógoch
+
+---
+
 ## 2026-06-17-0006
 
 ### Pridané

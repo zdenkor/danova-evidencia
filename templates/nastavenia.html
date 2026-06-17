@@ -86,6 +86,28 @@
 
                     <hr class="my-4">
 
+                    <h5 class="text-primary mb-3">Účtovný mód</h5>
+                    <div class="row">
+                        <div class="col-md-12 mb-3">
+                            <label class="form-label">Vyberte účtovný mód</label>
+                            <select name="mod" class="form-select">
+                                <option value="zjednoduseny" {% if nastavenia.mod == 'zjednoduseny' %}selected{% endif %}>
+                                    Zjednodušená evidencia (daňová evidencia)
+                                </option>
+                                <option value="jednoduche_uctovnictvo" {% if nastavenia.mod == 'jednoduche_uctovnictvo' %}selected{% endif %}>
+                                    Jednoduché účtovníctvo (FUTURE)
+                                </option>
+                            </select>
+                            <div class="form-text">
+                                <strong>Zjednodušená evidencia</strong> – klasická daňová evidencia podľa § 6 zákona o dani z príjmov.
+                                <br>
+                                <strong>Jednoduché účtovníctvo</strong> – plánované do budúcnosti. Prekope sa zobrazenie a pridajú sa účtovné funkcie.
+                            </div>
+                        </div>
+                    </div>
+
+                    <hr class="my-4">
+
                     <h5 class="text-primary mb-3">Daňové nastavenia</h5>
                     <div class="row">
                         <div class="col-md-6 mb-3">

@@ -276,4 +276,65 @@
         return confirm(message);
     };
 
+    // ==================== DPH SELECTY ====================
+    /**
+     * Inicializuje DPH selecty - zobrazuje iba percento po výbere,
+     * ale v rozbalenom zozname zobrazuje celý popis
+     */
+    function initDphSelects() {
+        var selects = document.querySelectorAll('select.sadzba, select.sadzba-dph');
+        
+        selects.forEach(function(select) {
+            // Uložiť pôvodné texty všetkých optionov
+            Array.from(select.options).forEach(function(opt) {
+                if (!opt.dataset.fullText) {
+                    opt.dataset.fullText = opt.text;
+                }
+            });
+            
+            // Funkcia na skrátenie vybraného optionu
+            function shortenSelected() {
+                var selected = select.options[select.selectedIndex];
+                if (selected && selected.dataset.fullText) {
+                    var match = selected.dataset.fullText.match(/^(\d+)%/);
+                    if (match) {
+                        selected.text = match[1] + '%';
+                    }
+                }
+            }
+            
+            // Funkcia na obnovenie plných textov
+            function restoreFullTexts() {
+                Array.from(select.options).forEach(function(opt) {
+                    if (opt.dataset.fullText) {
+                        opt.text = opt.dataset.fullText;
+                    }
+                });
+            }
+            
+            // Po zmene (zatvorení) skrátiť
+            select.addEventListener('change', function() {
+                restoreFullTexts();
+                shortenSelected();
+            });
+            
+            // Pred otvorením obnoviť plné texty
+            select.addEventListener('mousedown', restoreFullTexts);
+            select.addEventListener('focus', restoreFullTexts);
+            select.addEventListener('keydown', function(e) {
+                if (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === ' ') {
+                    restoreFullTexts();
+                }
+            });
+            
+            // Inicializovať
+            shortenSelected();
+        });
+    }
+
+    // Volanie pri načítaní stránky
+    document.addEventListener('DOMContentLoaded', function() {
+        initDphSelects();
+    });
+
 })();

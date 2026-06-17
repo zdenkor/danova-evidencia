@@ -588,6 +588,30 @@ textarea.form-control {
     color: var(--text-primary);
 }
 
+/* === MODAL FIX === */
+.modal {
+    z-index: 1055;
+}
+
+.modal-backdrop {
+    z-index: 1040;
+}
+
+.modal-dialog {
+    z-index: 1055;
+}
+
+/* Force modal to show immediately without animation */
+.modal.show {
+    display: block !important;
+    opacity: 1 !important;
+}
+
+.modal.show .modal-dialog {
+    transform: none !important;
+    transition: none !important;
+}
+
 /* === FLASH MESSAGES === */
 .flash-messages {
     position: fixed;

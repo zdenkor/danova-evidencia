@@ -43,6 +43,12 @@
 - [ ] [FUTURE] Versioned import/export format with schema compatibility checks
 - [ ] [FUTURE] Data integrity: store actual values, not references, for legal compliance
 
+### Jednoduché účtovníctvo (FUTURE)
+- [ ] [FUTURE] Prekopanie zobrazenia pre mód Jednoduché účtovníctvo
+- [ ] [FUTURE] Pridanie účtovných funkcií (účtovné triedy, syntetické a analytické účty)
+- [ ] [FUTURE] Podpora pre účtovné doklady v jednoduchom účtovníctve
+- [ ] [FUTURE] Rozšírené reporty pre jednoduché účtovníctvo
+
 ---
 
 *Posledná aktualizácia: 2026-06-16*

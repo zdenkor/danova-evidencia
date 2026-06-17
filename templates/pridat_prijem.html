@@ -194,10 +194,9 @@
                                     <td><input type="number" name="polozka_cena[]" class="form-control form-control-sm cena" value="0" min="0" step="0.01" oninput="prepocitajRiadok(this)"></td>
                                     <td>
                                         <select name="polozka_sadzba_dph[]" class="form-select form-select-sm sadzba" onchange="prepocitajRiadok(this)">
-                                            <option value="23" selected>23% (základná)</option>
-                                            <option value="19">19% (znížená)</option>
-                                            <option value="5">5% (super-znížená)</option>
-                                            <option value="0">0% (oslobodené)</option>
+                                            {% for s in dph_sadzby %}
+                                            <option value="{{ s.hodnota_cislo|int }}" {% if s.hodnota_cislo == 23 %}selected{% endif %}>{{ s.hodnota_cislo|int }}% ({{ s.nazov }}) - {{ s.popis }}</option>
+                                            {% endfor %}
                                         </select>
                                     </td>
                                     <td><input type="number" name="polozka_zaklad[]" class="form-control form-control-sm zaklad" value="0" readonly step="0.01"></td>
@@ -290,9 +289,11 @@
 {% block extra_js %}
 <script type="application/json" id="ciselniky-data">{{ ciselniky|tojson }}</script>
 <script type="application/json" id="jednotky-data">{{ jednotky|tojson }}</script>
+<script type="application/json" id="dph-data">{{ dph_sadzby|tojson }}</script>
 <script>
 const ciselniky = JSON.parse(document.getElementById('ciselniky-data').textContent);
 const jednotkyData = JSON.parse(document.getElementById('jednotky-data').textContent);
+const dphData = JSON.parse(document.getElementById('dph-data').textContent);
 
 // Načítať šablóny pre príjmy
 let sablonyData = [];
@@ -340,6 +341,7 @@ function aplikujSablonu(btn) {
     
     // Prepočítať riadok
     prepocitajRiadok(row.querySelector('.mnozstvo'));
+    initDphSelects();
 }
 
 function onTypDokladuChange() {
@@ -472,10 +474,7 @@ function pridajPolozku() {
         <td><input type="number" name="polozka_cena[]" class="form-control form-control-sm cena" value="0" min="0" step="0.01" oninput="prepocitajRiadok(this)"></td>
         <td>
             <select name="polozka_sadzba_dph[]" class="form-select form-select-sm sadzba" onchange="prepocitajRiadok(this)">
-                <option value="23" selected>23% (základná)</option>
-                <option value="19">19% (znížená)</option>
-                <option value="5">5% (super-znížená)</option>
-                <option value="0">0% (oslobodené)</option>
+                ${dphData.map(s => '<option value="' + s.hodnota_cislo + '" ' + (s.hodnota_cislo === 23 ? 'selected' : '') + '>' + s.hodnota_cislo + '% (' + s.nazov + ') - ' + s.popis + '</option>').join('')}
             </select>
         </td>
         <td><input type="number" name="polozka_zaklad[]" class="form-control form-control-sm zaklad" value="0" readonly step="0.01"></td>
@@ -490,6 +489,7 @@ function pridajPolozku() {
     `;
     tbody.appendChild(row);
     prepocitajSucet();
+    initDphSelects();
 }
 
 function zmazPolozku(btn) {

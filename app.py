@@ -224,6 +224,15 @@ def inject_globals():
     # Nastavenia zobrazenia
     zobrazenie = get_zobrazenie()
 
+    # Nastavenia firmy (vrátane módu)
+    nastavenia = None
+    try:
+        db = get_db()
+        nastavenia = db.execute('SELECT * FROM nastavenia LIMIT 1').fetchone()
+        db.close()
+    except:
+        nastavenia = None
+
     # Database version
     db_verzia = get_current_version(DEFAULT_DB_PATH)
     
@@ -242,6 +251,7 @@ def inject_globals():
         'MESIACE_SK': MESIACE_SK,
         'MESIACE_SK_KRATKE': MESIACE_SK_KRATKE,
         'zobrazenie': zobrazenie,
+        'nastavenia': nastavenia,
         'db_verzia': db_verzia,
         'app_verzia': app_verzia
     }
@@ -553,7 +563,8 @@ def pridat_prijem():
 
     db.close()
     jednotky = [dict(j) for j in get_jednotky()]
-    return render_template('pridat_prijem.html', ciselniky=ciselniky, kontakty=kontakty, jednotky=jednotky)
+    dph_sadzby = [dict(s) for s in get_dph_sadzby()]
+    return render_template('pridat_prijem.html', ciselniky=ciselniky, kontakty=kontakty, jednotky=jednotky, dph_sadzby=dph_sadzby)
 
 
 @app.route('/upravit-prijem/<int:id>', methods=['GET', 'POST'])
@@ -681,7 +692,8 @@ def upravit_prijem(id):
 
     db.close()
     jednotky = [dict(j) for j in get_jednotky()]
-    return render_template('upravit_prijem.html', prijem=prijem, polozky=polozky, kontakty=kontakty, ciselniky=ciselniky, jednotky=jednotky)
+    dph_sadzby = [dict(s) for s in get_dph_sadzby()]
+    return render_template('upravit_prijem.html', prijem=prijem, polozky=polozky, kontakty=kontakty, ciselniky=ciselniky, jednotky=jednotky, dph_sadzby=dph_sadzby)
 
 
 @app.route('/zmazat-prijem/<int:id>')
@@ -858,7 +870,8 @@ def pridat_vydavok():
 
     db.close()
     jednotky = [dict(j) for j in get_jednotky()]
-    return render_template('pridat_vydavok.html', ciselniky=ciselniky, kontakty=kontakty, jednotky=jednotky)
+    dph_sadzby = [dict(s) for s in get_dph_sadzby()]
+    return render_template('pridat_vydavok.html', ciselniky=ciselniky, kontakty=kontakty, jednotky=jednotky, dph_sadzby=dph_sadzby)
 
 
 @app.route('/upravit-vydavok/<int:id>', methods=['GET', 'POST'])
@@ -987,7 +1000,8 @@ def upravit_vydavok(id):
 
     db.close()
     jednotky = [dict(j) for j in get_jednotky()]
-    return render_template('upravit_vydavok.html', vydavok=vydavok, polozky=polozky, kontakty=kontakty, ciselniky=ciselniky, jednotky=jednotky)
+    dph_sadzby = [dict(s) for s in get_dph_sadzby()]
+    return render_template('upravit_vydavok.html', vydavok=vydavok, polozky=polozky, kontakty=kontakty, ciselniky=ciselniky, jednotky=jednotky, dph_sadzby=dph_sadzby)
 
 
 @app.route('/zmazat-vydavok/<int:id>')
@@ -1648,7 +1662,7 @@ def nastavenia():
                 nazov_firmy = ?, ico = ?, dic = ?, ic_dph = ?,
                 adresa = ?, mesto = ?, psc = ?,
                 bankovy_ucet = ?, iban = ?,
-                pausalne_vydavky = ?, platitel_dph = ?
+                pausalne_vydavky = ?, platitel_dph = ?, mod = ?
             WHERE id = 1
         ''', (
             request.form['nazov_firmy'],
@@ -1661,7 +1675,8 @@ def nastavenia():
             request.form.get('bankovy_ucet', ''),
             request.form.get('iban', ''),
             1 if request.form.get('pausalne_vydavky') else 0,
-            1 if request.form.get('platitel_dph') else 0
+            1 if request.form.get('platitel_dph') else 0,
+            request.form.get('mod', 'zjednoduseny')
         ))
         db.commit()
         db.close()

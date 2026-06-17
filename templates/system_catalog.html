@@ -56,7 +56,7 @@
                                         {% endif %}
                                     </td>
                                     <td><small class="text-muted">{{ item.popis or '' }}</small></td>
-                                    <td>{{ item.platnost_od or '-' }}</td>
+                                    <td>{{ format_datum(item.platnost_od) or '-' }}</td>
                                     <td>
                                         {% if item.je_aktivny %}
                                             <span class="badge bg-success">Aktívny</span>
@@ -66,8 +66,7 @@
                                     </td>
                                     <td class="text-center">
                                         <button type="button" class="btn btn-sm btn-outline-primary" 
-                                                data-bs-toggle="modal" 
-                                                data-bs-target="#editModal{{ item.id }}"
+                                                onclick="document.getElementById('editModal{{ item.id }}').style.display='block'; document.getElementById('editModal{{ item.id }}').classList.add('show');"
                                                 title="Upraviť">
                                             <i class="bi bi-pencil"></i>
                                         </button>
@@ -81,12 +80,12 @@
 
                 <!-- Edit Modals -->
                 {% for item in items %}
-                <div class="modal fade" id="editModal{{ item.id }}" tabindex="-1">
+                <div class="modal" id="editModal{{ item.id }}" tabindex="-1" data-bs-backdrop="static">
                     <div class="modal-dialog">
                         <div class="modal-content">
                             <div class="modal-header bg-primary text-white">
                                 <h5 class="modal-title">Upraviť: {{ item.nazov }}</h5>
-                                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                                <button type="button" class="btn-close btn-close-white" onclick="document.getElementById('editModal{{ item.id }}').style.display='none'; document.getElementById('editModal{{ item.id }}').classList.remove('show');"></button>
                             </div>
                             <form method="post" action="{{ url_for('upravit_system_catalog', id=item.id) }}">
                                 <div class="modal-body">
@@ -112,7 +111,7 @@
                                     </div>
                                 </div>
                                 <div class="modal-footer">
-                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Zrušiť</button>
+                                    <button type="button" class="btn btn-secondary" onclick="document.getElementById('editModal{{ item.id }}').style.display='none'; document.getElementById('editModal{{ item.id }}').classList.remove('show');">Zrušiť</button>
                                     <button type="submit" class="btn btn-primary">Uložiť</button>
                                 </div>
                             </form>

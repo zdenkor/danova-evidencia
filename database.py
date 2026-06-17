@@ -45,6 +45,7 @@ def init_db():
     _add_column_if_not_exists('vydavky', 'sadzba_dph_zakladna', 'REAL')
     _add_column_if_not_exists('vydavky', 'sadzba_dph_znizena', 'REAL')
     _add_column_if_not_exists('vydavky', 'sadzba_dph_super_znizena', 'REAL')
+    _add_column_if_not_exists('nastavenia', 'mod', "TEXT DEFAULT 'zjednoduseny'")
     
     conn = get_db()
     cursor = conn.cursor()
@@ -76,6 +77,7 @@ def init_db():
             iban TEXT,
             pausalne_vydavky BOOLEAN DEFAULT 0,
             platitel_dph BOOLEAN DEFAULT 0,
+            mod TEXT DEFAULT 'zjednoduseny',
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
     ''')
