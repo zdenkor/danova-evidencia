@@ -705,6 +705,34 @@ textarea.form-control {
     font-size: 0.75em;
 }
 
+.status-bar .status-center {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    gap: 2px;
+}
+
+.status-bar .status-copyright {
+    color: var(--statusbar-text);
+    font-size: var(--font-size-xs);
+    opacity: 0.9;
+    line-height: 1.2;
+}
+
+.status-bar .status-version {
+    color: var(--statusbar-text-muted);
+    font-size: var(--font-size-xs);
+    line-height: 1.2;
+    opacity: 0.85;
+}
+
+.status-bar .status-version i {
+    margin-right: var(--spacing-xs);
+    font-size: 0.75em;
+}
+
 /* === FOOTER === */
 .footer {
     background-color: var(--bg-card);
