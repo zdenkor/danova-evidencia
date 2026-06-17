@@ -9,7 +9,9 @@ from database import (get_db, init_db, set_db_path, DEFAULT_DB_PATH, get_agendy_
                       get_vydavok_polozky, pridat_vydavok_polozku, upravit_vydavok_polozku, zmazat_vydavok_polozku,
                       get_system_catalog, get_system_catalog_item, get_dph_sadzby,
                       get_typy_dokladov_prijem, get_typy_dokladov_vydavok, get_legal_limit,
-                      update_system_catalog, ulozit_dph_sadzby_do_dokladu, ulozit_kontakt_info_do_dokladu)
+                      update_system_catalog, ulozit_dph_sadzby_do_dokladu, ulozit_kontakt_info_do_dokladu,
+                      get_objednavky, get_objednavka, get_objednavka_polozky,
+                      pridat_objednavku, upravit_objednavku, zmenit_stav_objednavky, zmazat_objednavku)
 from migrations import get_current_version
 from import_export import export_data, import_data, validate_import
 from datetime import datetime, date
@@ -1183,6 +1185,238 @@ def zmazat_zavazok(id):
     db.close()
     flash('Záväzok bol zmazaný!', 'danger')
     return redirect(url_for('zavazky'))
+
+
+# ==================== OBJEDNÁVKY ====================
+
+@app.route('/objednavky')
+def objednavky():
+    """Zoznam objednávok s filtrom podľa stavu a roka."""
+    stav_filter = request.args.get('stav', '')
+    rok = request.args.get('rok', datetime.now().year, type=int)
+    
+    objednavky_data = get_objednavky(stav=stav_filter or None, rok=rok)
+    
+    # Štatistiky
+    stats = {}
+    for s in ['nova', 'potvrdena', 'vybavena', 'stornovana']:
+        stats[s] = len([o for o in objednavky_data if o['stav'] == s])
+    
+    return render_template('objednavky.html', 
+                         objednavky=objednavky_data, 
+                         rok=rok, 
+                         stav_filter=stav_filter,
+                         stats=stats)
+
+
+@app.route('/pridat-objednavku', methods=['GET', 'POST'])
+def pridat_objednavku():
+    """Pridá novú objednávku."""
+    if request.method == 'POST':
+        # Vypočítať sumy z položiek
+        zaklad_dane = float(request.form.get('zaklad_dane', 0))
+        dph_suma = float(request.form.get('dph', 0))
+        celkova_suma = float(request.form.get('celkova_suma', 0))
+        
+        data = {
+            'cislo_objednavky': request.form['cislo_objednavky'],
+            'datum_vystavenia': request.form['datum_vystavenia'],
+            'datum_platnosti': request.form.get('datum_platnosti'),
+            'odberatel_id': request.form.get('odberatel_id') or None,
+            'odberatel_nazov': request.form.get('odberatel_nazov', ''),
+            'odberatel_ico': request.form.get('odberatel_ico', ''),
+            'odberatel_dic': request.form.get('odberatel_dic', ''),
+            'odberatel_ic_dph': request.form.get('odberatel_ic_dph', ''),
+            'odberatel_adresa': request.form.get('odberatel_adresa', ''),
+            'odberatel_mesto': request.form.get('odberatel_mesto', ''),
+            'odberatel_psc': request.form.get('odberatel_psc', ''),
+            'odberatel_stat': request.form.get('odberatel_stat', 'Slovensko'),
+            'dodavatel_id': request.form.get('dodavatel_id') or None,
+            'dodavatel_nazov': request.form.get('dodavatel_nazov', ''),
+            'dodavatel_ico': request.form.get('dodavatel_ico', ''),
+            'dodavatel_dic': request.form.get('dodavatel_dic', ''),
+            'dodavatel_ic_dph': request.form.get('dodavatel_ic_dph', ''),
+            'dodavatel_adresa': request.form.get('dodavatel_adresa', ''),
+            'dodavatel_mesto': request.form.get('dodavatel_mesto', ''),
+            'dodavatel_psc': request.form.get('dodavatel_psc', ''),
+            'dodavatel_stat': request.form.get('dodavatel_stat', 'Slovensko'),
+            'stav': 'nova',
+            'suma': float(request.form.get('suma', 0)),
+            'dph': dph_suma,
+            'zaklad_dane': zaklad_dane,
+            'celkova_suma': celkova_suma,
+            'mena': request.form.get('mena', 'EUR'),
+            'poznamka': request.form.get('poznamka', '')
+        }
+        
+        # Položky
+        polozky_nazvy = request.form.getlist('polozka_nazov[]')
+        polozky_poznamky = request.form.getlist('polozka_poznamka[]')
+        polozky_mnozstva = request.form.getlist('polozka_mnozstvo[]')
+        polozky_jednotky = request.form.getlist('polozka_jednotka[]')
+        polozky_ceny = request.form.getlist('polozka_cena[]')
+        polozky_sadzby = request.form.getlist('polozka_sadzba_dph[]')
+        polozky_zaklady = request.form.getlist('polozka_zaklad[]')
+        polozky_dph = request.form.getlist('polozka_dph[]')
+        polozky_celkom = request.form.getlist('polozka_celkom[]')
+        
+        polozky = []
+        for i in range(len(polozky_nazvy)):
+            if polozky_nazvy[i].strip():
+                polozky.append({
+                    'nazov': polozky_nazvy[i],
+                    'poznamka': polozky_poznamky[i] if i < len(polozky_poznamky) else '',
+                    'mnozstvo': float(polozky_mnozstva[i]) if i < len(polozky_mnozstva) else 1,
+                    'jednotka': polozky_jednotky[i] if i < len(polozky_jednotky) else 'ks',
+                    'jednotkova_cena_bez_dph': float(polozky_ceny[i]) if i < len(polozky_ceny) else 0,
+                    'sadzba_dph': polozky_sadzby[i] if i < len(polozky_sadzby) else '23',
+                    'zaklad_dane': float(polozky_zaklady[i]) if i < len(polozky_zaklady) else 0,
+                    'dph': float(polozky_dph[i]) if i < len(polozky_dph) else 0,
+                    'celkova_suma': float(polozky_celkom[i]) if i < len(polozky_celkom) else 0
+                })
+        
+        objednavka_id, chyba = pridat_objednavku(data, polozky)
+        
+        if chyba:
+            flash(f'Chyba pri pridávaní objednávky: {chyba}', 'danger')
+        else:
+            flash('Objednávka bola úspešne pridaná!', 'success')
+        return redirect(url_for('objednavky'))
+    
+    db = get_db()
+    # Načítať kontakty
+    kontakty_raw = db.execute('SELECT * FROM adresar WHERE je_aktivny = 1 ORDER BY nazov').fetchall()
+    kontakty = []
+    for k in kontakty_raw:
+        kdict = dict(k)
+        kdict['adresy'] = db.execute('''
+            SELECT * FROM adresar_dorucovacie_adresy WHERE kontakt_id = ? AND je_aktivny = 1 ORDER BY nazov
+        ''', (k['id'],)).fetchall()
+        kdict['kontakty'] = db.execute('''
+            SELECT * FROM adresar_kontakty WHERE kontakt_id = ? AND je_aktivny = 1 ORDER BY meno
+        ''', (k['id'],)).fetchall()
+        kontakty.append(kdict)
+    db.close()
+    
+    jednotky = [dict(j) for j in get_jednotky()]
+    return render_template('pridat_objednavku.html', kontakty=kontakty, jednotky=jednotky)
+
+
+@app.route('/upravit-objednavku/<int:id>', methods=['GET', 'POST'])
+def upravit_objednavku(id):
+    """Upraví objednávku."""
+    if request.method == 'POST':
+        zaklad_dane = float(request.form.get('zaklad_dane', 0))
+        dph_suma = float(request.form.get('dph', 0))
+        celkova_suma = float(request.form.get('celkova_suma', 0))
+        
+        data = {
+            'cislo_objednavky': request.form['cislo_objednavky'],
+            'datum_vystavenia': request.form['datum_vystavenia'],
+            'datum_platnosti': request.form.get('datum_platnosti'),
+            'odberatel_id': request.form.get('odberatel_id') or None,
+            'odberatel_nazov': request.form.get('odberatel_nazov', ''),
+            'odberatel_ico': request.form.get('odberatel_ico', ''),
+            'odberatel_dic': request.form.get('odberatel_dic', ''),
+            'odberatel_ic_dph': request.form.get('odberatel_ic_dph', ''),
+            'odberatel_adresa': request.form.get('odberatel_adresa', ''),
+            'odberatel_mesto': request.form.get('odberatel_mesto', ''),
+            'odberatel_psc': request.form.get('odberatel_psc', ''),
+            'odberatel_stat': request.form.get('odberatel_stat', 'Slovensko'),
+            'dodavatel_id': request.form.get('dodavatel_id') or None,
+            'dodavatel_nazov': request.form.get('dodavatel_nazov', ''),
+            'dodavatel_ico': request.form.get('dodavatel_ico', ''),
+            'dodavatel_dic': request.form.get('dodavatel_dic', ''),
+            'dodavatel_ic_dph': request.form.get('dodavatel_ic_dph', ''),
+            'dodavatel_adresa': request.form.get('dodavatel_adresa', ''),
+            'dodavatel_mesto': request.form.get('dodavatel_mesto', ''),
+            'dodavatel_psc': request.form.get('dodavatel_psc', ''),
+            'dodavatel_stat': request.form.get('dodavatel_stat', 'Slovensko'),
+            'stav': request.form.get('stav', 'nova'),
+            'suma': float(request.form.get('suma', 0)),
+            'dph': dph_suma,
+            'zaklad_dane': zaklad_dane,
+            'celkova_suma': celkova_suma,
+            'mena': request.form.get('mena', 'EUR'),
+            'poznamka': request.form.get('poznamka', '')
+        }
+        
+        # Položky
+        polozky_nazvy = request.form.getlist('polozka_nazov[]')
+        polozky_poznamky = request.form.getlist('polozka_poznamka[]')
+        polozky_mnozstva = request.form.getlist('polozka_mnozstvo[]')
+        polozky_jednotky = request.form.getlist('polozka_jednotka[]')
+        polozky_ceny = request.form.getlist('polozka_cena[]')
+        polozky_sadzby = request.form.getlist('polozka_sadzba_dph[]')
+        polozky_zaklady = request.form.getlist('polozka_zaklad[]')
+        polozky_dph = request.form.getlist('polozka_dph[]')
+        polozky_celkom = request.form.getlist('polozka_celkom[]')
+        
+        polozky = []
+        for i in range(len(polozky_nazvy)):
+            if polozky_nazvy[i].strip():
+                polozky.append({
+                    'nazov': polozky_nazvy[i],
+                    'poznamka': polozky_poznamky[i] if i < len(polozky_poznamky) else '',
+                    'mnozstvo': float(polozky_mnozstva[i]) if i < len(polozky_mnozstva) else 1,
+                    'jednotka': polozky_jednotky[i] if i < len(polozky_jednotky) else 'ks',
+                    'jednotkova_cena_bez_dph': float(polozky_ceny[i]) if i < len(polozky_ceny) else 0,
+                    'sadzba_dph': polozky_sadzby[i] if i < len(polozky_sadzby) else '23',
+                    'zaklad_dane': float(polozky_zaklady[i]) if i < len(polozky_zaklady) else 0,
+                    'dph': float(polozky_dph[i]) if i < len(polozky_dph) else 0,
+                    'celkova_suma': float(polozky_celkom[i]) if i < len(polozky_celkom) else 0
+                })
+        
+        ok, chyba = upravit_objednavku(id, data, polozky)
+        
+        if chyba:
+            flash(f'Chyba pri úprave objednávky: {chyba}', 'danger')
+        else:
+            flash('Objednávka bola upravená!', 'success')
+        return redirect(url_for('objednavky'))
+    
+    objednavka = get_objednavka(id)
+    if not objednavka:
+        flash('Objednávka nebola nájdená!', 'danger')
+        return redirect(url_for('objednavky'))
+    
+    polozky = get_objednavka_polozky(id)
+    
+    db = get_db()
+    kontakty_raw = db.execute('SELECT * FROM adresar WHERE je_aktivny = 1 ORDER BY nazov').fetchall()
+    kontakty = []
+    for k in kontakty_raw:
+        kdict = dict(k)
+        kdict['adresy'] = db.execute('''
+            SELECT * FROM adresar_dorucovacie_adresy WHERE kontakt_id = ? AND je_aktivny = 1 ORDER BY nazov
+        ''', (k['id'],)).fetchall()
+        kdict['kontakty'] = db.execute('''
+            SELECT * FROM adresar_kontakty WHERE kontakt_id = ? AND je_aktivny = 1 ORDER BY meno
+        ''', (k['id'],)).fetchall()
+        kontakty.append(kdict)
+    db.close()
+    
+    jednotky = [dict(j) for j in get_jednotky()]
+    return render_template('upravit_objednavku.html', objednavka=objednavka, polozky=polozky, kontakty=kontakty, jednotky=jednotky)
+
+
+@app.route('/zmenit-stav-objednavky/<int:id>/<stav>')
+def zmenit_stav_objednavky_route(id, stav):
+    """Zmení stav objednávky."""
+    if stav in ['nova', 'potvrdena', 'vybavena', 'stornovana']:
+        zmenit_stav_objednavky(id, stav)
+        flash(f'Stav objednávky bol zmenený na "{stav}".', 'success')
+    else:
+        flash('Neplatný stav!', 'danger')
+    return redirect(url_for('objednavky'))
+
+
+@app.route('/zmazat-objednavku/<int:id>')
+def zmazat_objednavku_route(id):
+    """Zmaže objednávku."""
+    zmazat_objednavku(id)
+    flash('Objednávka bola zmazaná!', 'danger')
+    return redirect(url_for('objednavky'))
 
 
 # ==================== ZÁSOBY ====================

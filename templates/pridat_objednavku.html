@@ -1,0 +1,327 @@
+{% extends "base.html" %}
+
+{% block title %}Pridať objednávku - Daňová evidencia{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-10">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0"><i class="bi bi-cart-plus"></i> Pridať objednávku</h4>
+            </div>
+            <div class="card-body">
+                <form method="post" id="objednavkaForm">
+                    <!-- Základné údaje -->
+                    <div class="row mb-3">
+                        <div class="col-md-3 mb-2">
+                            <label class="form-label">Číslo objednávky *</label>
+                            <input type="text" name="cislo_objednavky" class="form-control" required placeholder="napr. OBJ-2026-0001">
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <label class="form-label">Dátum vystavenia *</label>
+                            <input type="date" name="datum_vystavenia" class="form-control" required value="{{ aktualny_datum }}">
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <label class="form-label">Platnosť do</label>
+                            <input type="date" name="datum_platnosti" class="form-control">
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <label class="form-label">Mena</label>
+                            <select name="mena" class="form-select">
+                                <option value="EUR" selected>EUR</option>
+                                <option value="USD">USD</option>
+                                <option value="CZK">CZK</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Odberateľ -->
+                    <h5 class="text-primary mt-3 mb-2"><i class="bi bi-person"></i> Odberateľ</h5>
+                    <div class="row mb-3">
+                        <div class="col-md-4 mb-2">
+                            <label class="form-label">Kontakt z adresára</label>
+                            <select name="odberatel_id" class="form-select" id="odberatelSelect">
+                                <option value="">-- Vyberte kontakt --</option>
+                                {% for k in kontakty %}
+                                <option value="{{ k.id }}" data-nazov="{{ k.nazov }}" data-ico="{{ k.ico }}" data-dic="{{ k.dic }}"
+                                    data-ic-dph="{{ k.ic_dph }}" data-adresa="{{ k.sidlo_ulica }} {{ k.sidlo_cislo }}"
+                                    data-mesto="{{ k.sidlo_mesto }}" data-psc="{{ k.sidlo_psc }}" data-stat="{{ k.sidlo_stat }}">{{ k.nazov }}{% if k.ico %} (IČO: {{ k.ico }}){% endif %}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-2">
+                            <label class="form-label">Názov / Meno</label>
+                            <input type="text" name="odberatel_nazov" class="form-control" id="odberatelNazov" placeholder="Názov firmy alebo meno">
+                        </div>
+                        <div class="col-md-2 mb-2">
+                            <label class="form-label">IČO</label>
+                            <input type="text" name="odberatel_ico" class="form-control" id="odberatelIco" placeholder="12345678">
+                        </div>
+                        <div class="col-md-2 mb-2">
+                            <label class="form-label">DIČ</label>
+                            <input type="text" name="odberatel_dic" class="form-control" id="odberatelDic" placeholder="1234567890">
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <label class="form-label">IČ DPH</label>
+                            <input type="text" name="odberatel_ic_dph" class="form-control" id="odberatelIcDph" placeholder="SK1234567890">
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <label class="form-label">Adresa</label>
+                            <input type="text" name="odberatel_adresa" class="form-control" id="odberatelAdresa" placeholder="Ulica a číslo">
+                        </div>
+                        <div class="col-md-2 mb-2">
+                            <label class="form-label">Mesto</label>
+                            <input type="text" name="odberatel_mesto" class="form-control" id="odberatelMesto" placeholder="Mesto">
+                        </div>
+                        <div class="col-md-2 mb-2">
+                            <label class="form-label">PSČ</label>
+                            <input type="text" name="odberatel_psc" class="form-control" id="odberatelPsc" placeholder="00000">
+                        </div>
+                        <div class="col-md-2 mb-2">
+                            <label class="form-label">Štát</label>
+                            <input type="text" name="odberatel_stat" class="form-control" id="odberatelStat" value="Slovensko">
+                        </div>
+                    </div>
+
+                    <!-- Dodávateľ -->
+                    <h5 class="text-primary mt-3 mb-2"><i class="bi bi-truck"></i> Dodávateľ</h5>
+                    <div class="row mb-3">
+                        <div class="col-md-4 mb-2">
+                            <label class="form-label">Kontakt z adresára</label>
+                            <select name="dodavatel_id" class="form-select" id="dodavatelSelect">
+                                <option value="">-- Vyberte kontakt --</option>
+                                {% for k in kontakty %}
+                                <option value="{{ k.id }}" data-nazov="{{ k.nazov }}" data-ico="{{ k.ico }}" data-dic="{{ k.dic }}"
+                                    data-ic-dph="{{ k.ic_dph }}" data-adresa="{{ k.sidlo_ulica }} {{ k.sidlo_cislo }}"
+                                    data-mesto="{{ k.sidlo_mesto }}" data-psc="{{ k.sidlo_psc }}" data-stat="{{ k.sidlo_stat }}">{{ k.nazov }}{% if k.ico %} (IČO: {{ k.ico }}){% endif %}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-2">
+                            <label class="form-label">Názov / Meno</label>
+                            <input type="text" name="dodavatel_nazov" class="form-control" id="dodavatelNazov" placeholder="Názov firmy alebo meno">
+                        </div>
+                        <div class="col-md-2 mb-2">
+                            <label class="form-label">IČO</label>
+                            <input type="text" name="dodavatel_ico" class="form-control" id="dodavatelIco" placeholder="12345678">
+                        </div>
+                        <div class="col-md-2 mb-2">
+                            <label class="form-label">DIČ</label>
+                            <input type="text" name="dodavatel_dic" class="form-control" id="dodavatelDic" placeholder="1234567890">
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <label class="form-label">IČ DPH</label>
+                            <input type="text" name="dodavatel_ic_dph" class="form-control" id="dodavatelIcDph" placeholder="SK1234567890">
+                        </div>
+                        <div class="col-md-3 mb-2">
+                            <label class="form-label">Adresa</label>
+                            <input type="text" name="dodavatel_adresa" class="form-control" id="dodavatelAdresa" placeholder="Ulica a číslo">
+                        </div>
+                        <div class="col-md-2 mb-2">
+                            <label class="form-label">Mesto</label>
+                            <input type="text" name="dodavatel_mesto" class="form-control" id="dodavatelMesto" placeholder="Mesto">
+                        </div>
+                        <div class="col-md-2 mb-2">
+                            <label class="form-label">PSČ</label>
+                            <input type="text" name="dodavatel_psc" class="form-control" id="dodavatelPsc" placeholder="00000">
+                        </div>
+                        <div class="col-md-2 mb-2">
+                            <label class="form-label">Štát</label>
+                            <input type="text" name="dodavatel_stat" class="form-control" id="dodavatelStat" value="Slovensko">
+                        </div>
+                    </div>
+
+                    <!-- Položky objednávky -->
+                    <h5 class="text-primary mt-3 mb-2"><i class="bi bi-list-ul"></i> Položky objednávky</h5>
+                    <div class="table-responsive">
+                        <table class="table table-sm" id="polozkyTable">
+                            <thead>
+                                <tr>
+                                    <th style="width: 30%">Názov</th>
+                                    <th style="width: 15%">Poznámka</th>
+                                    <th style="width: 8%">Množstvo</th>
+                                    <th style="width: 10%">Jednotka</th>
+                                    <th style="width: 12%">Cena bez DPH</th>
+                                    <th style="width: 8%">DPH %</th>
+                                    <th style="width: 12%">Základ</th>
+                                    <th style="width: 10%">DPH</th>
+                                    <th style="width: 12%">Celkom</th>
+                                    <th style="width: 40px"></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr class="polozka-row">
+                                    <td><input type="text" name="polozka_nazov[]" class="form-control form-control-sm" placeholder="Názov položky"></td>
+                                    <td><input type="text" name="polozka_poznamka[]" class="form-control form-control-sm" placeholder="Poznámka"></td>
+                                    <td><input type="number" name="polozka_mnozstvo[]" class="form-control form-control-sm mnozstvo" value="1" min="0" step="0.01"></td>
+                                    <td>
+                                        <select name="polozka_jednotka[]" class="form-select form-select-sm">
+                                            {% for j in jednotky %}
+                                            <option value="{{ j.skratka }}">{{ j.skratka }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </td>
+                                    <td><input type="number" name="polozka_cena[]" class="form-control form-control-sm cena" value="0" min="0" step="0.01"></td>
+                                    <td>
+                                        <select name="polozka_sadzba_dph[]" class="form-select form-select-sm sadzba-dph">
+                                            <option value="23" selected>23%</option>
+                                            <option value="19">19%</option>
+                                            <option value="5">5%</option>
+                                            <option value="0">0%</option>
+                                        </select>
+                                    </td>
+                                    <td><input type="number" name="polozka_zaklad[]" class="form-control form-control-sm zaklad" value="0" readonly tabindex="-1"></td>
+                                    <td><input type="number" name="polozka_dph[]" class="form-control form-control-sm dph" value="0" readonly tabindex="-1"></td>
+                                    <td><input type="number" name="polozka_celkom[]" class="form-control form-control-sm celkom" value="0" readonly tabindex="-1"></td>
+                                    <td><button type="button" class="btn btn-sm btn-outline-danger zmazat-polozku" title="Zmazať"><i class="bi bi-x-lg"></i></button></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <button type="button" class="btn btn-outline-primary btn-sm mb-3" id="pridatPolozku">
+                        <i class="bi bi-plus-circle"></i> Pridať položku
+                    </button>
+
+                    <!-- Súčty -->
+                    <div class="row justify-content-end mb-3">
+                        <div class="col-md-4">
+                            <div class="card bg-light">
+                                <div class="card-body py-2">
+                                    <div class="d-flex justify-content-between mb-1">
+                                        <span>Základ dane:</span>
+                                        <span class="fw-bold" id="sumZaklad">0,00 EUR</span>
+                                    </div>
+                                    <div class="d-flex justify-content-between mb-1">
+                                        <span>DPH:</span>
+                                        <span class="fw-bold" id="sumDph">0,00 EUR</span>
+                                    </div>
+                                    <hr class="my-1">
+                                    <div class="d-flex justify-content-between">
+                                        <span class="fw-bold">Celková suma:</span>
+                                        <span class="fw-bold text-primary fs-5" id="sumCelkom">0,00 EUR</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <input type="hidden" name="zaklad_dane" id="inputZaklad" value="0">
+                    <input type="hidden" name="dph" id="inputDph" value="0">
+                    <input type="hidden" name="celkova_suma" id="inputCelkom" value="0">
+                    <input type="hidden" name="suma" id="inputSuma" value="0">
+
+                    <!-- Poznámka -->
+                    <div class="mb-3">
+                        <label class="form-label">Poznámka</label>
+                        <textarea name="poznamka" class="form-control" rows="2" placeholder="Voliteľná poznámka k objednávke"></textarea>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-check-circle"></i> Uložiť objednávku
+                        </button>
+                        <a href="{{ url_for('objednavky') }}" class="btn btn-outline-secondary">Zrušiť</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Auto-fill kontakt údaje
+document.getElementById('odberatelSelect').addEventListener('change', function() {
+    const opt = this.options[this.selectedIndex];
+    if (opt.value) {
+        document.getElementById('odberatelNazov').value = opt.dataset.nazov || '';
+        document.getElementById('odberatelIco').value = opt.dataset.ico || '';
+        document.getElementById('odberatelDic').value = opt.dataset.dic || '';
+        document.getElementById('odberatelIcDph').value = opt.dataset.icDph || '';
+        document.getElementById('odberatelAdresa').value = opt.dataset.adresa || '';
+        document.getElementById('odberatelMesto').value = opt.dataset.mesto || '';
+        document.getElementById('odberatelPsc').value = opt.dataset.psc || '';
+        document.getElementById('odberatelStat').value = opt.dataset.stat || 'Slovensko';
+    }
+});
+
+document.getElementById('dodavatelSelect').addEventListener('change', function() {
+    const opt = this.options[this.selectedIndex];
+    if (opt.value) {
+        document.getElementById('dodavatelNazov').value = opt.dataset.nazov || '';
+        document.getElementById('dodavatelIco').value = opt.dataset.ico || '';
+        document.getElementById('dodavatelDic').value = opt.dataset.dic || '';
+        document.getElementById('dodavatelIcDph').value = opt.dataset.icDph || '';
+        document.getElementById('dodavatelAdresa').value = opt.dataset.adresa || '';
+        document.getElementById('dodavatelMesto').value = opt.dataset.mesto || '';
+        document.getElementById('dodavatelPsc').value = opt.dataset.psc || '';
+        document.getElementById('dodavatelStat').value = opt.dataset.stat || 'Slovensko';
+    }
+});
+
+// Položky - výpočty
+function prepocitatPolozky() {
+    let totalZaklad = 0, totalDph = 0, totalCelkom = 0;
+    
+    document.querySelectorAll('.polozka-row').forEach(row => {
+        const mnozstvo = parseFloat(row.querySelector('.mnozstvo').value) || 0;
+        const cena = parseFloat(row.querySelector('.cena').value) || 0;
+        const sadzba = parseFloat(row.querySelector('.sadzba-dph').value) || 0;
+        
+        const zaklad = mnozstvo * cena;
+        const dph = zaklad * (sadzba / 100);
+        const celkom = zaklad + dph;
+        
+        row.querySelector('.zaklad').value = zaklad.toFixed(2);
+        row.querySelector('.dph').value = dph.toFixed(2);
+        row.querySelector('.celkom').value = celkom.toFixed(2);
+        
+        totalZaklad += zaklad;
+        totalDph += dph;
+        totalCelkom += celkom;
+    });
+    
+    document.getElementById('sumZaklad').textContent = totalZaklad.toLocaleString('sk-SK', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' EUR';
+    document.getElementById('sumDph').textContent = totalDph.toLocaleString('sk-SK', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' EUR';
+    document.getElementById('sumCelkom').textContent = totalCelkom.toLocaleString('sk-SK', {minimumFractionDigits: 2, maximumFractionDigits: 2}) + ' EUR';
+    
+    document.getElementById('inputZaklad').value = totalZaklad.toFixed(2);
+    document.getElementById('inputDph').value = totalDph.toFixed(2);
+    document.getElementById('inputCelkom').value = totalCelkom.toFixed(2);
+    document.getElementById('inputSuma').value = totalCelkom.toFixed(2);
+}
+
+// Event listeners pre výpočty
+document.getElementById('polozkyTable').addEventListener('input', function(e) {
+    if (e.target.classList.contains('mnozstvo') || e.target.classList.contains('cena') || e.target.classList.contains('sadzba-dph')) {
+        prepocitatPolozky();
+    }
+});
+
+// Pridať položku
+document.getElementById('pridatPolozku').addEventListener('click', function() {
+    const tbody = document.querySelector('#polozkyTable tbody');
+    const newRow = document.querySelector('.polozka-row').cloneNode(true);
+    newRow.querySelectorAll('input').forEach(input => {
+        if (!input.classList.contains('zaklad') && !input.classList.contains('dph') && !input.classList.contains('celkom')) {
+            input.value = input.type === 'number' ? (input.classList.contains('mnozstvo') ? '1' : '0') : '';
+        }
+    });
+    tbody.appendChild(newRow);
+    prepocitatPolozky();
+});
+
+// Zmazať položku
+document.getElementById('polozkyTable').addEventListener('click', function(e) {
+    if (e.target.closest('.zmazat-polozku')) {
+        const row = e.target.closest('.polozka-row');
+        if (document.querySelectorAll('.polozka-row').length > 1) {
+            row.remove();
+            prepocitatPolozky();
+        }
+    }
+});
+
+// Inicializácia
+prepocitatPolozky();
+</script>
+{% endblock %}

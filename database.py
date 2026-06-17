@@ -811,6 +811,213 @@ def zmazat_sablonu(id):
     db.close()
 
 
+# ==================== FUNKCIE PRE OBJEDNÁVKY ====================
+
+def get_objednavky(stav=None, rok=None):
+    """Vráti zoznam objednávok, voliteľne filtrovaných podľa stavu a roka."""
+    db = get_db()
+    query = 'SELECT * FROM objednavky WHERE 1=1'
+    params = []
+    if stav:
+        query += ' AND stav = ?'
+        params.append(stav)
+    if rok:
+        query += " AND strftime('%Y', datum_vystavenia) = ?"
+        params.append(str(rok))
+    query += ' ORDER BY datum_vystavenia DESC'
+    cursor = db.execute(query, params)
+    items = cursor.fetchall()
+    db.close()
+    return items
+
+def get_objednavka(id):
+    """Vráti konkrétnu objednávku podľa ID."""
+    db = get_db()
+    cursor = db.execute('SELECT * FROM objednavky WHERE id = ?', (id,))
+    item = cursor.fetchone()
+    db.close()
+    return item
+
+def get_objednavka_polozky(objednavka_id):
+    """Vráti položky objednávky."""
+    db = get_db()
+    cursor = db.execute('SELECT * FROM objednavky_polozky WHERE objednavka_id = ? ORDER BY poradie', (objednavka_id,))
+    items = cursor.fetchall()
+    db.close()
+    return items
+
+def pridat_objednavku(data, polozky):
+    """
+    Pridá novú objednávku s položkami.
+    
+    Args:
+        data: dict s údajmi objednávky
+        polozky: list of dicts s položkami
+    
+    Returns:
+        (id, chyba)
+    """
+    db = get_db()
+    try:
+        cursor = db.execute('''
+            INSERT INTO objednavky (
+                cislo_objednavky, datum_vystavenia, datum_platnosti,
+                odberatel_id, odberatel_nazov, odberatel_ico, odberatel_dic, odberatel_ic_dph,
+                odberatel_adresa, odberatel_mesto, odberatel_psc, odberatel_stat,
+                dodavatel_id, dodavatel_nazov, dodavatel_ico, dodavatel_dic, dodavatel_ic_dph,
+                dodavatel_adresa, dodavatel_mesto, dodavatel_psc, dodavatel_stat,
+                stav, suma, dph, zaklad_dane, celkova_suma, mena, poznamka
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (
+            data.get('cislo_objednavky', ''),
+            data.get('datum_vystavenia'),
+            data.get('datum_platnosti'),
+            data.get('odberatel_id'),
+            data.get('odberatel_nazov', ''),
+            data.get('odberatel_ico', ''),
+            data.get('odberatel_dic', ''),
+            data.get('odberatel_ic_dph', ''),
+            data.get('odberatel_adresa', ''),
+            data.get('odberatel_mesto', ''),
+            data.get('odberatel_psc', ''),
+            data.get('odberatel_stat', 'Slovensko'),
+            data.get('dodavatel_id'),
+            data.get('dodavatel_nazov', ''),
+            data.get('dodavatel_ico', ''),
+            data.get('dodavatel_dic', ''),
+            data.get('dodavatel_ic_dph', ''),
+            data.get('dodavatel_adresa', ''),
+            data.get('dodavatel_mesto', ''),
+            data.get('dodavatel_psc', ''),
+            data.get('dodavatel_stat', 'Slovensko'),
+            data.get('stav', 'nova'),
+            data.get('suma', 0),
+            data.get('dph', 0),
+            data.get('zaklad_dane', 0),
+            data.get('celkova_suma', 0),
+            data.get('mena', 'EUR'),
+            data.get('poznamka', '')
+        ))
+        objednavka_id = cursor.lastrowid
+        
+        # Vložiť položky
+        for i, polozka in enumerate(polozky):
+            db.execute('''
+                INSERT INTO objednavky_polozky
+                (objednavka_id, nazov, poznamka, mnozstvo, jednotka, jednotkova_cena_bez_dph,
+                 sadzba_dph, zaklad_dane, dph, celkova_suma, poradie)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (
+                objednavka_id,
+                polozka.get('nazov', ''),
+                polozka.get('poznamka', ''),
+                float(polozka.get('mnozstvo', 1)),
+                polozka.get('jednotka', 'ks'),
+                float(polozka.get('jednotkova_cena_bez_dph', 0)),
+                polozka.get('sadzba_dph', '23'),
+                float(polozka.get('zaklad_dane', 0)),
+                float(polozka.get('dph', 0)),
+                float(polozka.get('celkova_suma', 0)),
+                i + 1
+            ))
+        
+        db.commit()
+        db.close()
+        return objednavka_id, None
+    except Exception as e:
+        db.close()
+        return None, str(e)
+
+def upravit_objednavku(id, data, polozky):
+    """Upraví objednávku - zmaže staré položky a pridá nové."""
+    db = get_db()
+    try:
+        db.execute('''
+            UPDATE objednavky SET
+                cislo_objednavky = ?, datum_vystavenia = ?, datum_platnosti = ?,
+                odberatel_id = ?, odberatel_nazov = ?, odberatel_ico = ?, odberatel_dic = ?, odberatel_ic_dph = ?,
+                odberatel_adresa = ?, odberatel_mesto = ?, odberatel_psc = ?, odberatel_stat = ?,
+                dodavatel_id = ?, dodavatel_nazov = ?, dodavatel_ico = ?, dodavatel_dic = ?, dodavatel_ic_dph = ?,
+                dodavatel_adresa = ?, dodavatel_mesto = ?, dodavatel_psc = ?, dodavatel_stat = ?,
+                stav = ?, suma = ?, dph = ?, zaklad_dane = ?, celkova_suma = ?, mena = ?, poznamka = ?
+            WHERE id = ?
+        ''', (
+            data.get('cislo_objednavky', ''),
+            data.get('datum_vystavenia'),
+            data.get('datum_platnosti'),
+            data.get('odberatel_id'),
+            data.get('odberatel_nazov', ''),
+            data.get('odberatel_ico', ''),
+            data.get('odberatel_dic', ''),
+            data.get('odberatel_ic_dph', ''),
+            data.get('odberatel_adresa', ''),
+            data.get('odberatel_mesto', ''),
+            data.get('odberatel_psc', ''),
+            data.get('odberatel_stat', 'Slovensko'),
+            data.get('dodavatel_id'),
+            data.get('dodavatel_nazov', ''),
+            data.get('dodavatel_ico', ''),
+            data.get('dodavatel_dic', ''),
+            data.get('dodavatel_ic_dph', ''),
+            data.get('dodavatel_adresa', ''),
+            data.get('dodavatel_mesto', ''),
+            data.get('dodavatel_psc', ''),
+            data.get('dodavatel_stat', 'Slovensko'),
+            data.get('stav', 'nova'),
+            data.get('suma', 0),
+            data.get('dph', 0),
+            data.get('zaklad_dane', 0),
+            data.get('celkova_suma', 0),
+            data.get('mena', 'EUR'),
+            data.get('poznamka', ''),
+            id
+        ))
+        
+        # Zmazať staré položky a pridať nové
+        db.execute('DELETE FROM objednavky_polozky WHERE objednavka_id = ?', (id,))
+        for i, polozka in enumerate(polozky):
+            db.execute('''
+                INSERT INTO objednavky_polozky
+                (objednavka_id, nazov, poznamka, mnozstvo, jednotka, jednotkova_cena_bez_dph,
+                 sadzba_dph, zaklad_dane, dph, celkova_suma, poradie)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (
+                id,
+                polozka.get('nazov', ''),
+                polozka.get('poznamka', ''),
+                float(polozka.get('mnozstvo', 1)),
+                polozka.get('jednotka', 'ks'),
+                float(polozka.get('jednotkova_cena_bez_dph', 0)),
+                polozka.get('sadzba_dph', '23'),
+                float(polozka.get('zaklad_dane', 0)),
+                float(polozka.get('dph', 0)),
+                float(polozka.get('celkova_suma', 0)),
+                i + 1
+            ))
+        
+        db.commit()
+        db.close()
+        return True, None
+    except Exception as e:
+        db.close()
+        return False, str(e)
+
+def zmenit_stav_objednavky(id, novy_stav):
+    """Zmení stav objednávky."""
+    db = get_db()
+    db.execute('UPDATE objednavky SET stav = ? WHERE id = ?', (novy_stav, id))
+    db.commit()
+    db.close()
+
+def zmazat_objednavku(id):
+    """Zmaže objednávku a jej položky."""
+    db = get_db()
+    db.execute('DELETE FROM objednavky_polozky WHERE objednavka_id = ?', (id,))
+    db.execute('DELETE FROM objednavky WHERE id = ?', (id,))
+    db.commit()
+    db.close()
+
+
 # ==================== SYSTEM CATALOG ====================
 
 def get_system_catalog(kategoria=None, je_aktivny=True):
