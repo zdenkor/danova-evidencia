@@ -10,7 +10,7 @@ Aplikácia slúži na evidenciu príjmov a výdavkov, sledovanie pohľadávok a 
 
 ### Windows (portable)
 
-1. Stiahnite najnovší release z [Releases](https://github.com/zdenkor/danova-evidencia/releases)
+1. Stiahnite ZIP z [Releases](https://github.com/zdenkor/danova-evidencia/releases)
 2. Rozbaľte ZIP súbor
 3. Spustite `start.bat`
 4. Otvorte prehliadač na `http://localhost:8080`
@@ -30,7 +30,7 @@ python app.py
 
 ## Zálohovanie
 
-Všetky dáta sú v súbore `danova_evidencia.db`. Pre zálohovanie skopírujte tento súbor.
+Dáta sú v súbore `danova_evidencia.db` a v priečinku `agendy/`. Pre zálohovanie skopírujte tieto súbory.
 
 ## Právne informácie
 
