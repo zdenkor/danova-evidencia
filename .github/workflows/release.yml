@@ -1,0 +1,99 @@
+name: Release Build
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  # Build Portable ZIP on Windows
+  build-portable:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      
+      - name: Extract version from tag
+        id: get_version
+        run: |
+          $version = $env:GITHUB_REF -replace 'refs/tags/v', ''
+          echo "VERSION=$version" >> $env:GITHUB_OUTPUT
+      
+      - name: Create portable package
+        run: |
+          $version = "${{ steps.get_version.outputs.VERSION }}"
+          $buildDir = "build\portable"
+          $zipName = "danova-evidencia-portable-$version.zip"
+          
+          New-Item -ItemType Directory -Force -Path $buildDir
+          
+          Copy-Item *.py $buildDir\
+          Copy-Item -Recurse templates $buildDir\
+          Copy-Item -Recurse static $buildDir\
+          Copy-Item -Recurse migrations $buildDir\
+          Copy-Item requirements.txt $buildDir\
+          Copy-Item start.bat $buildDir\
+          Copy-Item README.md $buildDir\
+          Copy-Item VERSION.md $buildDir\
+          Copy-Item DOCKER.md $buildDir\
+          Copy-Item Dockerfile $buildDir\
+          Copy-Item docker-compose.yml $buildDir\
+          
+          cd $buildDir
+          python -m venv .venv
+          .venv\Scripts\pip install -r requirements.txt
+          cd ..\..
+          
+          Compress-Archive -Path "$buildDir\*" -DestinationPath $zipName -Force
+      
+      - name: Upload Portable ZIP to Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: danova-evidencia-portable-*.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # Build Docker Image
+  build-docker:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ghcr.io/${{ github.repository }}
+          tags: |
+            type=ref,event=tag
+            type=semver,pattern={{version}}
+            type=raw,value=latest
+      
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
