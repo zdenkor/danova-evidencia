@@ -692,6 +692,19 @@ textarea.form-control {
     color: white;
 }
 
+.status-bar .version-info {
+    color: var(--statusbar-text-muted);
+    font-size: var(--font-size-xs);
+    line-height: 1.2;
+    margin-top: 2px;
+    opacity: 0.85;
+}
+
+.status-bar .version-info i {
+    margin-right: var(--spacing-xs);
+    font-size: 0.75em;
+}
+
 /* === FOOTER === */
 .footer {
     background-color: var(--bg-card);
