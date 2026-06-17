@@ -37,7 +37,22 @@
                     </div>
 
                     <!-- Odberateľ -->
-                    <h5 class="text-primary mt-3 mb-2"><i class="bi bi-person"></i> Odberateľ</h5>
+                    {% if typ == 'vystavena' %}
+                    <!-- Pri vystavenej objednávke je odberateľ moja firma -->
+                    <input type="hidden" name="odberatel_nazov" value="{{ firma.nazov_firmy or '' }}">
+                    <input type="hidden" name="odberatel_ico" value="{{ firma.ico or '' }}">
+                    <input type="hidden" name="odberatel_dic" value="{{ firma.dic or '' }}">
+                    <input type="hidden" name="odberatel_ic_dph" value="{{ firma.ic_dph or '' }}">
+                    <input type="hidden" name="odberatel_adresa" value="{{ firma.adresa or '' }}">
+                    <input type="hidden" name="odberatel_mesto" value="{{ firma.mesto or '' }}">
+                    <input type="hidden" name="odberatel_psc" value="{{ firma.psc or '' }}">
+                    <input type="hidden" name="odberatel_stat" value="Slovensko">
+                    <div class="alert alert-info mb-3">
+                        <i class="bi bi-building"></i> <strong>Odberateľ:</strong> {{ firma.nazov_firmy or 'Vaša firma' }} 
+                        {% if firma.ico %}(IČO: {{ firma.ico }}){% endif %}
+                    </div>
+                    {% else %}
+                    <h5 class="text-primary mt-3 mb-2"><i class="bi bi-person"></i> Odberateľ (zákazník)</h5>
                     <div class="row mb-3">
                         <div class="col-md-4 mb-2">
                             <label class="form-label">Kontakt z adresára</label>
@@ -51,8 +66,8 @@
                             </select>
                         </div>
                         <div class="col-md-4 mb-2">
-                            <label class="form-label">Názov / Meno</label>
-                            <input type="text" name="odberatel_nazov" class="form-control" id="odberatelNazov" placeholder="Názov firmy alebo meno">
+                            <label class="form-label">Názov / Meno *</label>
+                            <input type="text" name="odberatel_nazov" class="form-control" id="odberatelNazov" placeholder="Názov firmy alebo meno" required>
                         </div>
                         <div class="col-md-2 mb-2">
                             <label class="form-label">IČO</label>
@@ -83,8 +98,24 @@
                             <input type="text" name="odberatel_stat" class="form-control" id="odberatelStat" value="Slovensko">
                         </div>
                     </div>
+                    {% endif %}
 
                     <!-- Dodávateľ -->
+                    {% if typ == 'prijata' %}
+                    <!-- Pri prijatej objednávke je dodávateľ moja firma -->
+                    <input type="hidden" name="dodavatel_nazov" value="{{ firma.nazov_firmy or '' }}">
+                    <input type="hidden" name="dodavatel_ico" value="{{ firma.ico or '' }}">
+                    <input type="hidden" name="dodavatel_dic" value="{{ firma.dic or '' }}">
+                    <input type="hidden" name="dodavatel_ic_dph" value="{{ firma.ic_dph or '' }}">
+                    <input type="hidden" name="dodavatel_adresa" value="{{ firma.adresa or '' }}">
+                    <input type="hidden" name="dodavatel_mesto" value="{{ firma.mesto or '' }}">
+                    <input type="hidden" name="dodavatel_psc" value="{{ firma.psc or '' }}">
+                    <input type="hidden" name="dodavatel_stat" value="Slovensko">
+                    <div class="alert alert-info mb-3">
+                        <i class="bi bi-building"></i> <strong>Dodávateľ:</strong> {{ firma.nazov_firmy or 'Vaša firma' }} 
+                        {% if firma.ico %}(IČO: {{ firma.ico }}){% endif %}
+                    </div>
+                    {% else %}
                     <h5 class="text-primary mt-3 mb-2"><i class="bi bi-truck"></i> Dodávateľ</h5>
                     <div class="row mb-3">
                         <div class="col-md-4 mb-2">
@@ -99,8 +130,8 @@
                             </select>
                         </div>
                         <div class="col-md-4 mb-2">
-                            <label class="form-label">Názov / Meno</label>
-                            <input type="text" name="dodavatel_nazov" class="form-control" id="dodavatelNazov" placeholder="Názov firmy alebo meno">
+                            <label class="form-label">Názov / Meno *</label>
+                            <input type="text" name="dodavatel_nazov" class="form-control" id="dodavatelNazov" placeholder="Názov firmy alebo meno" required>
                         </div>
                         <div class="col-md-2 mb-2">
                             <label class="form-label">IČO</label>
@@ -131,6 +162,7 @@
                             <input type="text" name="dodavatel_stat" class="form-control" id="dodavatelStat" value="Slovensko">
                         </div>
                     </div>
+                    {% endif %}
 
                     <!-- Položky objednávky -->
                     <h5 class="text-primary mt-3 mb-2"><i class="bi bi-list-ul"></i> Položky objednávky</h5>
@@ -230,34 +262,40 @@
 </div>
 
 <script>
-// Auto-fill kontakt údaje
-document.getElementById('odberatelSelect').addEventListener('change', function() {
-    const opt = this.options[this.selectedIndex];
-    if (opt.value) {
-        document.getElementById('odberatelNazov').value = opt.dataset.nazov || '';
-        document.getElementById('odberatelIco').value = opt.dataset.ico || '';
-        document.getElementById('odberatelDic').value = opt.dataset.dic || '';
-        document.getElementById('odberatelIcDph').value = opt.dataset.icDph || '';
-        document.getElementById('odberatelAdresa').value = opt.dataset.adresa || '';
-        document.getElementById('odberatelMesto').value = opt.dataset.mesto || '';
-        document.getElementById('odberatelPsc').value = opt.dataset.psc || '';
-        document.getElementById('odberatelStat').value = opt.dataset.stat || 'Slovensko';
-    }
-});
+// Auto-fill kontakt údaje - len ak element existuje
+const odberatelSelect = document.getElementById('odberatelSelect');
+if (odberatelSelect) {
+    odberatelSelect.addEventListener('change', function() {
+        const opt = this.options[this.selectedIndex];
+        if (opt.value) {
+            document.getElementById('odberatelNazov').value = opt.dataset.nazov || '';
+            document.getElementById('odberatelIco').value = opt.dataset.ico || '';
+            document.getElementById('odberatelDic').value = opt.dataset.dic || '';
+            document.getElementById('odberatelIcDph').value = opt.dataset.icDph || '';
+            document.getElementById('odberatelAdresa').value = opt.dataset.adresa || '';
+            document.getElementById('odberatelMesto').value = opt.dataset.mesto || '';
+            document.getElementById('odberatelPsc').value = opt.dataset.psc || '';
+            document.getElementById('odberatelStat').value = opt.dataset.stat || 'Slovensko';
+        }
+    });
+}
 
-document.getElementById('dodavatelSelect').addEventListener('change', function() {
-    const opt = this.options[this.selectedIndex];
-    if (opt.value) {
-        document.getElementById('dodavatelNazov').value = opt.dataset.nazov || '';
-        document.getElementById('dodavatelIco').value = opt.dataset.ico || '';
-        document.getElementById('dodavatelDic').value = opt.dataset.dic || '';
-        document.getElementById('dodavatelIcDph').value = opt.dataset.icDph || '';
-        document.getElementById('dodavatelAdresa').value = opt.dataset.adresa || '';
-        document.getElementById('dodavatelMesto').value = opt.dataset.mesto || '';
-        document.getElementById('dodavatelPsc').value = opt.dataset.psc || '';
-        document.getElementById('dodavatelStat').value = opt.dataset.stat || 'Slovensko';
-    }
-});
+const dodavatelSelect = document.getElementById('dodavatelSelect');
+if (dodavatelSelect) {
+    dodavatelSelect.addEventListener('change', function() {
+        const opt = this.options[this.selectedIndex];
+        if (opt.value) {
+            document.getElementById('dodavatelNazov').value = opt.dataset.nazov || '';
+            document.getElementById('dodavatelIco').value = opt.dataset.ico || '';
+            document.getElementById('dodavatelDic').value = opt.dataset.dic || '';
+            document.getElementById('dodavatelIcDph').value = opt.dataset.icDph || '';
+            document.getElementById('dodavatelAdresa').value = opt.dataset.adresa || '';
+            document.getElementById('dodavatelMesto').value = opt.dataset.mesto || '';
+            document.getElementById('dodavatelPsc').value = opt.dataset.psc || '';
+            document.getElementById('dodavatelStat').value = opt.dataset.stat || 'Slovensko';
+        }
+    });
+}
 
 // Položky - výpočty
 function prepocitatPolozky() {
