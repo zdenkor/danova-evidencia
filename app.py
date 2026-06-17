@@ -9,7 +9,7 @@ from database import (get_db, init_db, set_db_path, DEFAULT_DB_PATH, get_agendy_
                       get_vydavok_polozky, pridat_vydavok_polozku, upravit_vydavok_polozku, zmazat_vydavok_polozku,
                       get_system_catalog, get_system_catalog_item, get_dph_sadzby,
                       get_typy_dokladov_prijem, get_typy_dokladov_vydavok, get_legal_limit,
-                      update_system_catalog)
+                      update_system_catalog, ulozit_dph_sadzby_do_dokladu, ulozit_kontakt_info_do_dokladu)
 from migrations import get_current_version
 from import_export import export_data, import_data, validate_import
 from datetime import datetime, date
@@ -453,6 +453,13 @@ def pridat_prijem():
         ))
         prijem_id = db.execute('SELECT last_insert_rowid()').fetchone()[0]
 
+        # Ulož aktuálne DPH sadzby a kontaktné info pre právnu istotu
+        datum_prijetia_dt = datetime.strptime(datum_prijetia, '%Y-%m-%d')
+        ulozit_dph_sadzby_do_dokladu(prijem_id, 'prijmy', datum_prijetia_dt)
+        odberatel_id = request.form.get('odberatel_id')
+        if odberatel_id:
+            ulozit_kontakt_info_do_dokladu(prijem_id, 'prijmy', int(odberatel_id))
+
         # Uložiť položky (riadky faktúry) - používame rovnaké db spojenie
         polozky_nazvy = request.form.getlist('polozka_nazov[]')
         polozky_poznamky = request.form.getlist('polozka_poznamka[]')
@@ -750,6 +757,13 @@ def pridat_vydavok():
             1 if request.form.get('je_oslobodene') else 0
         ))
         vydavok_id = db.execute('SELECT last_insert_rowid()').fetchone()[0]
+
+        # Ulož aktuálne DPH sadzby a kontaktné info pre právnu istotu
+        datum_uhrady_dt = datetime.strptime(datum_uhrady, '%Y-%m-%d')
+        ulozit_dph_sadzby_do_dokladu(vydavok_id, 'vydavky', datum_uhrady_dt)
+        dodavatel_id = request.form.get('dodavatel_id')
+        if dodavatel_id:
+            ulozit_kontakt_info_do_dokladu(vydavok_id, 'vydavky', int(dodavatel_id))
 
         # Uložiť položky (riadky faktúry)
         polozky_nazvy = request.form.getlist('polozka_nazov[]')
