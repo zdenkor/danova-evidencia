@@ -84,10 +84,23 @@
                             <i class="bi bi-file-earmark-text sidebar-icon"></i>Záväzky
                         </a>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link {% if request.endpoint in ['objednavky', 'pridat_objednavku', 'upravit_objednavku'] %}active{% endif %}" href="{{ url_for('objednavky') }}">
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle {% if request.endpoint in ['prijate_objednavky', 'vystavene_objednavky', 'pridat_objednavku', 'upravit_objednavku'] %}active{% endif %}"
+                           href="#" id="objednavkyDropdown" role="button" data-bs-toggle="dropdown">
                             <i class="bi bi-cart sidebar-icon"></i>Objednávky
                         </a>
+                        <ul class="dropdown-menu">
+                            <li>
+                                <a class="dropdown-item {% if request.endpoint == 'prijate_objednavky' %}active{% endif %}" href="{{ url_for('prijate_objednavky') }}">
+                                    <i class="bi bi-inbox"></i> Prijaté objednávky
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item {% if request.endpoint == 'vystavene_objednavky' %}active{% endif %}" href="{{ url_for('vystavene_objednavky') }}">
+                                    <i class="bi bi-send"></i> Vystavené objednávky
+                                </a>
+                            </li>
+                        </ul>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link {% if request.endpoint in ['majetok', 'pridat_majetok'] %}active{% endif %}" href="{{ url_for('majetok') }}">

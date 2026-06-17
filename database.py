@@ -813,8 +813,8 @@ def zmazat_sablonu(id):
 
 # ==================== FUNKCIE PRE OBJEDNÁVKY ====================
 
-def get_objednavky(stav=None, rok=None):
-    """Vráti zoznam objednávok, voliteľne filtrovaných podľa stavu a roka."""
+def get_objednavky(stav=None, rok=None, typ=None):
+    """Vráti zoznam objednávok, voliteľne filtrovaných podľa stavu, roka a typu."""
     db = get_db()
     query = 'SELECT * FROM objednavky WHERE 1=1'
     params = []
@@ -824,6 +824,9 @@ def get_objednavky(stav=None, rok=None):
     if rok:
         query += " AND strftime('%Y', datum_vystavenia) = ?"
         params.append(str(rok))
+    if typ:
+        query += ' AND typ = ?'
+        params.append(typ)
     query += ' ORDER BY datum_vystavenia DESC'
     cursor = db.execute(query, params)
     items = cursor.fetchall()
@@ -866,8 +869,8 @@ def pridat_objednavku(data, polozky):
                 odberatel_adresa, odberatel_mesto, odberatel_psc, odberatel_stat,
                 dodavatel_id, dodavatel_nazov, dodavatel_ico, dodavatel_dic, dodavatel_ic_dph,
                 dodavatel_adresa, dodavatel_mesto, dodavatel_psc, dodavatel_stat,
-                stav, suma, dph, zaklad_dane, celkova_suma, mena, poznamka
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                stav, typ, suma, dph, zaklad_dane, celkova_suma, mena, poznamka
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
             data.get('cislo_objednavky', ''),
             data.get('datum_vystavenia'),
@@ -891,6 +894,7 @@ def pridat_objednavku(data, polozky):
             data.get('dodavatel_psc', ''),
             data.get('dodavatel_stat', 'Slovensko'),
             data.get('stav', 'nova'),
+            data.get('typ', 'prijata'),
             data.get('suma', 0),
             data.get('dph', 0),
             data.get('zaklad_dane', 0),
@@ -939,7 +943,7 @@ def upravit_objednavku(id, data, polozky):
                 odberatel_adresa = ?, odberatel_mesto = ?, odberatel_psc = ?, odberatel_stat = ?,
                 dodavatel_id = ?, dodavatel_nazov = ?, dodavatel_ico = ?, dodavatel_dic = ?, dodavatel_ic_dph = ?,
                 dodavatel_adresa = ?, dodavatel_mesto = ?, dodavatel_psc = ?, dodavatel_stat = ?,
-                stav = ?, suma = ?, dph = ?, zaklad_dane = ?, celkova_suma = ?, mena = ?, poznamka = ?
+                stav = ?, typ = ?, suma = ?, dph = ?, zaklad_dane = ?, celkova_suma = ?, mena = ?, poznamka = ?
             WHERE id = ?
         ''', (
             data.get('cislo_objednavky', ''),
@@ -964,6 +968,7 @@ def upravit_objednavku(id, data, polozky):
             data.get('dodavatel_psc', ''),
             data.get('dodavatel_stat', 'Slovensko'),
             data.get('stav', 'nova'),
+            data.get('typ', 'prijata'),
             data.get('suma', 0),
             data.get('dph', 0),
             data.get('zaklad_dane', 0),
