@@ -88,6 +88,9 @@
                 <div class="card">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <h5 class="mb-0"><i class="bi bi-truck"></i> Doručovacie adresy</h5>
+                        <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#pridatAdresuModal">
+                            <i class="bi bi-plus-circle"></i> Pridať adresu
+                        </button>
                     </div>
                     <div class="card-body">
                         {% if adresy %}
@@ -102,6 +105,7 @@
                                         <th>Mesto</th>
                                         <th>Štát</th>
                                         <th>Stav</th>
+                                        <th class="text-end" style="width:120px">Akcie</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -118,6 +122,14 @@
                                                 {{ 'Aktívna' if a.je_aktivny else 'Neaktívna' }}
                                             </span>
                                         </td>
+                                        <td class="text-end">
+                                            <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#upravitAdresuModal{{ a.id }}">
+                                                <i class="bi bi-pencil"></i>
+                                            </button>
+                                            <a href="{{ url_for('zmazat_adresu_route', kontakt_id=kontakt.id, adresa_id=a.id) }}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Naozaj zmazať túto adresu?')">
+                                                <i class="bi bi-trash"></i>
+                                            </a>
+                                        </td>
                                     </tr>
                                     {% endfor %}
                                 </tbody>
@@ -133,8 +145,11 @@
             <!-- Kontaktné osoby -->
             <div class="tab-pane fade" id="kontakty" role="tabpanel">
                 <div class="card">
-                    <div class="card-header">
+                    <div class="card-header d-flex justify-content-between align-items-center">
                         <h5 class="mb-0"><i class="bi bi-telephone"></i> Kontaktné osoby</h5>
+                        <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#pridatKontaktModal">
+                            <i class="bi bi-plus-circle"></i> Pridať kontakt
+                        </button>
                     </div>
                     <div class="card-body">
                         {% if kontakty %}
@@ -147,6 +162,7 @@
                                         <th>Email</th>
                                         <th>Poznámka</th>
                                         <th>Stav</th>
+                                        <th class="text-end" style="width:120px">Akcie</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -160,6 +176,14 @@
                                             <span class="badge bg-{{ 'success' if k.je_aktivny else 'secondary' }}">
                                                 {{ 'Aktívny' if k.je_aktivny else 'Neaktívny' }}
                                             </span>
+                                        </td>
+                                        <td class="text-end">
+                                            <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#upravitKontaktModal{{ k.id }}">
+                                                <i class="bi bi-pencil"></i>
+                                            </button>
+                                            <a href="{{ url_for('zmazat_kontakt_osobu_route', kontakt_id=kontakt.id, kontakt_osoba_id=k.id) }}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Naozaj zmazať túto kontaktnú osobu?')">
+                                                <i class="bi bi-trash"></i>
+                                            </a>
                                         </td>
                                     </tr>
                                     {% endfor %}
@@ -176,8 +200,11 @@
             <!-- Bankové účty -->
             <div class="tab-pane fade" id="banky" role="tabpanel">
                 <div class="card">
-                    <div class="card-header">
+                    <div class="card-header d-flex justify-content-between align-items-center">
                         <h5 class="mb-0"><i class="bi bi-bank"></i> Bankové účty</h5>
+                        <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#pridatBankovyUcetModal">
+                            <i class="bi bi-plus-circle"></i> Pridať účet
+                        </button>
                     </div>
                     <div class="card-body">
                         {% if banky %}
@@ -187,11 +214,14 @@
                                     <tr>
                                         <th>Názov</th>
                                         <th>Banka</th>
-                                        <th>Účet</th>
+                                        <th>Predčísle</th>
+                                        <th>Číslo účtu</th>
+                                        <th>Kód banky</th>
                                         <th>IBAN</th>
                                         <th>SWIFT</th>
                                         <th>Mena</th>
                                         <th>Stav</th>
+                                        <th class="text-end" style="width:120px">Akcie</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -199,6 +229,8 @@
                                     <tr class="{{ 'text-muted' if not b.je_aktivny else '' }}">
                                         <td>{{ b.nazov or '-' }}</td>
                                         <td>{{ b.banka or '-' }}</td>
+                                        <td>{{ b.predcislie or '-' }}</td>
+                                        <td>{{ b.cislo_uctu or '-' }}</td>
                                         <td>{{ b.bankovy_ucet or '-' }}</td>
                                         <td><code>{{ b.iban or '-' }}</code></td>
                                         <td>{{ b.swift or '-' }}</td>
@@ -207,6 +239,14 @@
                                             <span class="badge bg-{{ 'success' if b.je_aktivny else 'secondary' }}">
                                                 {{ 'Aktívny' if b.je_aktivny else 'Neaktívny' }}
                                             </span>
+                                        </td>
+                                        <td class="text-end">
+                                            <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#upravitBankovyUcetModal{{ b.id }}">
+                                                <i class="bi bi-pencil"></i>
+                                            </button>
+                                            <a href="{{ url_for('zmazat_bankovy_ucet_route', kontakt_id=kontakt.id, ucet_id=b.id) }}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Naozaj zmazať tento bankový účet?')">
+                                                <i class="bi bi-trash"></i>
+                                            </a>
                                         </td>
                                     </tr>
                                     {% endfor %}
@@ -223,8 +263,11 @@
             <!-- Poznámky -->
             <div class="tab-pane fade" id="poznamky" role="tabpanel">
                 <div class="card">
-                    <div class="card-header">
+                    <div class="card-header d-flex justify-content-between align-items-center">
                         <h5 class="mb-0"><i class="bi bi-sticky"></i> Poznámky</h5>
+                        <button type="button" class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#pridatPoznamkuModal">
+                            <i class="bi bi-plus-circle"></i> Pridať poznámku
+                        </button>
                     </div>
                     <div class="card-body">
                         {% if poznamky %}
@@ -235,6 +278,7 @@
                                         <th>Text</th>
                                         <th>Dátum</th>
                                         <th>Stav</th>
+                                        <th class="text-end" style="width:120px">Akcie</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -246,6 +290,14 @@
                                             <span class="badge bg-{{ 'success' if p.je_aktivny else 'secondary' }}">
                                                 {{ 'Aktívna' if p.je_aktivny else 'Neaktívna' }}
                                             </span>
+                                        </td>
+                                        <td class="text-end">
+                                            <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#upravitPoznamkuModal{{ p.id }}">
+                                                <i class="bi bi-pencil"></i>
+                                            </button>
+                                            <a href="{{ url_for('zmazat_poznamku_route', kontakt_id=kontakt.id, poznamka_id=p.id) }}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Naozaj zmazať túto poznámku?')">
+                                                <i class="bi bi-trash"></i>
+                                            </a>
                                         </td>
                                     </tr>
                                     {% endfor %}
@@ -267,5 +319,372 @@
         <i class="bi bi-arrow-left"></i> Späť do adresára
     </a>
 </div>
+
+<!-- Modálne okná pre adresy -->
+<div class="modal fade" id="pridatAdresuModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Pridať doručovaciu adresu</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="{{ url_for('pridat_adresu_route', id=kontakt.id) }}">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Názov</label>
+                        <input type="text" name="nazov" class="form-control" placeholder="napr. Hlavná kancelária">
+                    </div>
+                    <div class="row">
+                        <div class="col-md-8 mb-3">
+                            <label class="form-label">Ulica</label>
+                            <input type="text" name="ulica" class="form-control" placeholder="Ulica">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Číslo</label>
+                            <input type="text" name="cislo" class="form-control" placeholder="Číslo">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">PSČ</label>
+                            <input type="text" name="psc" class="form-control" placeholder="PSČ">
+                        </div>
+                        <div class="col-md-8 mb-3">
+                            <label class="form-label">Mesto</label>
+                            <input type="text" name="mesto" class="form-control" placeholder="Mesto">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Štát</label>
+                        <input type="text" name="stat" class="form-control" value="Slovensko">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Zrušiť</button>
+                    <button type="submit" class="btn btn-primary">Pridať</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% for a in adresy %}
+<div class="modal fade" id="upravitAdresuModal{{ a.id }}" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Upraviť adresu</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="{{ url_for('upravit_adresu_route', kontakt_id=kontakt.id, adresa_id=a.id) }}">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Názov</label>
+                        <input type="text" name="nazov" class="form-control" value="{{ a.nazov or '' }}">
+                    </div>
+                    <div class="row">
+                        <div class="col-md-8 mb-3">
+                            <label class="form-label">Ulica</label>
+                            <input type="text" name="ulica" class="form-control" value="{{ a.ulica or '' }}">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Číslo</label>
+                            <input type="text" name="cislo" class="form-control" value="{{ a.cislo or '' }}">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">PSČ</label>
+                            <input type="text" name="psc" class="form-control" value="{{ a.psc or '' }}">
+                        </div>
+                        <div class="col-md-8 mb-3">
+                            <label class="form-label">Mesto</label>
+                            <input type="text" name="mesto" class="form-control" value="{{ a.mesto or '' }}">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Štát</label>
+                        <input type="text" name="stat" class="form-control" value="{{ a.stat or 'Slovensko' }}">
+                    </div>
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" name="je_aktivny" class="form-check-input" id="adresaAktivna{{ a.id }}" {% if a.je_aktivny %}checked{% endif %}>
+                        <label class="form-check-label" for="adresaAktivna{{ a.id }}">Aktívna</label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Zrušiť</button>
+                    <button type="submit" class="btn btn-primary">Uložiť</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+<!-- Modálne okná pre kontaktné osoby -->
+<div class="modal fade" id="pridatKontaktModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Pridať kontaktnú osobu</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="{{ url_for('pridat_kontakt_osobu_route', id=kontakt.id) }}">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Meno *</label>
+                        <input type="text" name="meno" class="form-control" required placeholder="Meno a priezvisko">
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Telefón</label>
+                            <input type="text" name="telefon" class="form-control" placeholder="Telefón">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Email</label>
+                            <input type="email" name="email" class="form-control" placeholder="Email">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Poznámka</label>
+                        <input type="text" name="poznamka" class="form-control" placeholder="Poznámka">
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Zrušiť</button>
+                    <button type="submit" class="btn btn-primary">Pridať</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% for k in kontakty %}
+<div class="modal fade" id="upravitKontaktModal{{ k.id }}" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Upraviť kontaktnú osobu</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="{{ url_for('upravit_kontakt_osobu_route', kontakt_id=kontakt.id, kontakt_osoba_id=k.id) }}">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Meno *</label>
+                        <input type="text" name="meno" class="form-control" value="{{ k.meno or '' }}" required>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Telefón</label>
+                            <input type="text" name="telefon" class="form-control" value="{{ k.telefon or '' }}">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Email</label>
+                            <input type="email" name="email" class="form-control" value="{{ k.email or '' }}">
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Poznámka</label>
+                        <input type="text" name="poznamka" class="form-control" value="{{ k.poznamka or '' }}">
+                    </div>
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" name="je_aktivny" class="form-check-input" id="kontaktAktivny{{ k.id }}" {% if k.je_aktivny %}checked{% endif %}>
+                        <label class="form-check-label" for="kontaktAktivny{{ k.id }}">Aktívny</label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Zrušiť</button>
+                    <button type="submit" class="btn btn-primary">Uložiť</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+<!-- Modálne okná pre bankové účty -->
+<div class="modal fade" id="pridatBankovyUcetModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Pridať bankový účet</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="{{ url_for('pridat_bankovy_ucet_route', id=kontakt.id) }}">
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Názov</label>
+                            <input type="text" name="nazov" class="form-control" placeholder="napr. Hlavný účet">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Banka</label>
+                            <input type="text" name="banka" class="form-control" placeholder="Názov banky">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Predčísle</label>
+                            <input type="text" name="predcislie" class="form-control" placeholder="Predčísle">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Číslo účtu</label>
+                            <input type="text" name="cislo_uctu" class="form-control" placeholder="Číslo účtu">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Kód banky</label>
+                            <input type="text" name="bankovy_ucet" class="form-control" placeholder="Kód banky">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">IBAN</label>
+                            <input type="text" name="iban" class="form-control" placeholder="IBAN">
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label">SWIFT</label>
+                            <input type="text" name="swift" class="form-control" placeholder="SWIFT">
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label">Mena</label>
+                            <select name="mena" class="form-select">
+                                <option value="EUR" selected>EUR</option>
+                                <option value="USD">USD</option>
+                                <option value="CZK">CZK</option>
+                                <option value="GBP">GBP</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Zrušiť</button>
+                    <button type="submit" class="btn btn-primary">Pridať</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% for b in banky %}
+<div class="modal fade" id="upravitBankovyUcetModal{{ b.id }}" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Upraviť bankový účet</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="{{ url_for('upravit_bankovy_ucet_route', kontakt_id=kontakt.id, ucet_id=b.id) }}">
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Názov</label>
+                            <input type="text" name="nazov" class="form-control" value="{{ b.nazov or '' }}">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Banka</label>
+                            <input type="text" name="banka" class="form-control" value="{{ b.banka or '' }}">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Predčísle</label>
+                            <input type="text" name="predcislie" class="form-control" value="{{ b.predcislie or '' }}">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Číslo účtu</label>
+                            <input type="text" name="cislo_uctu" class="form-control" value="{{ b.cislo_uctu or '' }}">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Kód banky</label>
+                            <input type="text" name="bankovy_ucet" class="form-control" value="{{ b.bankovy_ucet or '' }}">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">IBAN</label>
+                            <input type="text" name="iban" class="form-control" value="{{ b.iban or '' }}">
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label">SWIFT</label>
+                            <input type="text" name="swift" class="form-control" value="{{ b.swift or '' }}">
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label">Mena</label>
+                            <select name="mena" class="form-select">
+                                <option value="EUR" {% if b.mena == 'EUR' %}selected{% endif %}>EUR</option>
+                                <option value="USD" {% if b.mena == 'USD' %}selected{% endif %}>USD</option>
+                                <option value="CZK" {% if b.mena == 'CZK' %}selected{% endif %}>CZK</option>
+                                <option value="GBP" {% if b.mena == 'GBP' %}selected{% endif %}>GBP</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" name="je_aktivny" class="form-check-input" id="ucetAktivny{{ b.id }}" {% if b.je_aktivny %}checked{% endif %}>
+                        <label class="form-check-label" for="ucetAktivny{{ b.id }}">Aktívny</label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Zrušiť</button>
+                    <button type="submit" class="btn btn-primary">Uložiť</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+<!-- Modálne okná pre poznámky -->
+<div class="modal fade" id="pridatPoznamkuModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Pridať poznámku</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="{{ url_for('pridat_poznamku_route', id=kontakt.id) }}">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Text poznámky *</label>
+                        <textarea name="text" class="form-control" rows="4" required placeholder="Zadajte text poznámky..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Zrušiť</button>
+                    <button type="submit" class="btn btn-primary">Pridať</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% for p in poznamky %}
+<div class="modal fade" id="upravitPoznamkuModal{{ p.id }}" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Upraviť poznámku</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="{{ url_for('upravit_poznamku_route', kontakt_id=kontakt.id, poznamka_id=p.id) }}">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Text poznámky *</label>
+                        <textarea name="text" class="form-control" rows="4" required>{{ p.text or '' }}</textarea>
+                    </div>
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" name="je_aktivny" class="form-check-input" id="poznamkaAktivna{{ p.id }}" {% if p.je_aktivny %}checked{% endif %}>
+                        <label class="form-check-label" for="poznamkaAktivna{{ p.id }}">Aktívna</label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Zrušiť</button>
+                    <button type="submit" class="btn btn-primary">Uložiť</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
 {% endblock %}
 

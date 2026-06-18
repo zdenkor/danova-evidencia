@@ -1,140 +1,570 @@
 {% extends "base.html" %}
 
-{% block title %}Agendy - Daňová evidencia{% endblock %}
+{% block title %}Nastavenia agendy - Daňová evidencia{% endblock %}
 
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h2><i class="bi bi-briefcase text-primary"></i> Správa agend</h2>
-</div>
-
-<!-- Vytvoriť novú agendu -->
-<div class="card mb-4">
-    <div class="card-header bg-primary text-white">
-        <h5 class="mb-0"><i class="bi bi-plus-circle"></i> Vytvoriť novú agendu</h5>
-    </div>
-    <div class="card-body">
-        <form method="post" action="{{ url_for('vytvorit_agendu_route') }}">
-            <div class="row">
-                <div class="col-md-5 mb-3">
-                    <label class="form-label">Názov agendy (názov firmy) *</label>
-                    <input type="text" name="nazov" class="form-control" required
-                           placeholder="napr. Moja firma s.r.o.">
-                </div>
-                <div class="col-md-5 mb-3">
-                    <label class="form-label">Poznámka</label>
-                    <input type="text" name="poznamka" class="form-control"
-                           placeholder="Voliteľná poznámka">
-                </div>
-                <div class="col-md-2 mb-3 d-flex align-items-end">
-                    <button type="submit" class="btn btn-success w-100">
-                        <i class="bi bi-plus-lg"></i> Vytvoriť
-                    </button>
-                </div>
+<div class="row justify-content-center">
+    <div class="col-lg-11">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h4 class="mb-0"><i class="bi bi-briefcase"></i> Nastavenia agendy</h4>
             </div>
-        </form>
-    </div>
-</div>
+            <div class="card-body">
+                <div class="alert alert-info mb-3">
+                    <i class="bi bi-info-circle"></i>
+                    <strong>Nastavenia agendy</strong> sú <strong>nadradené globálnym nastaveniam</strong>, ak sú vyplnené.
+                    Ak tu pre danú hodnotu nič nenastavíte, použijú sa hodnoty z <a href="{{ url_for('system_catalog') }}">Globálnych nastavení</a>.
+                </div>
 
-<!-- Import agendy -->
-<div class="card mb-4">
-    <div class="card-header bg-info text-white">
-        <h5 class="mb-0"><i class="bi bi-upload"></i> Importovať agendu zo súboru</h5>
-    </div>
-    <div class="card-body">
-        <form method="post" action="{{ url_for('importovat_agendu_route') }}" enctype="multipart/form-data">
-            <div class="row">
-                <div class="col-md-5 mb-3">
-                    <label class="form-label">Súbor databázy (.db)</label>
-                    <input type="file" name="soubor" class="form-control" accept=".db" required>
-                </div>
-                <div class="col-md-5 mb-3">
-                    <label class="form-label">Nový názov (voliteľné)</label>
-                    <input type="text" name="novy_nazov" class="form-control"
-                           placeholder="Ponechajte prázdne pre pôvodný názov">
-                </div>
-                <div class="col-md-2 mb-3 d-flex align-items-end">
-                    <button type="submit" class="btn btn-info w-100">
-                        <i class="bi bi-upload"></i> Importovať
-                    </button>
-                </div>
-            </div>
-        </form>
-    </div>
-</div>
+                <ul class="nav nav-tabs mb-3" id="agendaTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="agendy-tab" data-bs-toggle="tab" data-bs-target="#tab-agendy" type="button" role="tab">
+                            <i class="bi bi-briefcase"></i> Agendy
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="zobrazenie-tab" data-bs-toggle="tab" data-bs-target="#tab-zobrazenie" type="button" role="tab">
+                            <i class="bi bi-palette"></i> Zobrazenie
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="typy-tab" data-bs-toggle="tab" data-bs-target="#tab-typy" type="button" role="tab">
+                            <i class="bi bi-file-earmark-text"></i> Typy dokladov
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="cisleniky-tab" data-bs-toggle="tab" data-bs-target="#tab-cisleniky" type="button" role="tab">
+                            <i class="bi bi-list-ol"></i> Číselné rady
+                        </button>
+                    </li>
+                </ul>
 
-<!-- Zoznam agend -->
-<div class="card">
-    <div class="card-header">
-        <h5 class="mb-0"><i class="bi bi-list"></i> Zoznam agend</h5>
-    </div>
-    <div class="card-body">
-        {% if agendy %}
-        <div class="table-responsive">
-            <table class="table table-hover">
-                <thead>
-                    <tr>
-                        <th>Stav</th>
-                        <th>Názov</th>
-                        <th>Súbor</th>
-                        <th>Vytvorená</th>
-                        <th>Poznámka</th>
-                        <th class="text-end">Akcie</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for a in agendy %}
-                    <tr class="{{ 'table-success' if a.je_aktivna else '' }}">
-                        <td>
-                            {% if a.je_aktivna %}
-                            <span class="badge bg-success"><i class="bi bi-check-circle"></i> Aktívna</span>
-                            {% else %}
-                            <span class="badge bg-secondary">Neaktívna</span>
-                            {% endif %}
-                        </td>
-                        <td><strong>{{ a.nazov }}</strong></td>
-                        <td><code>{{ a.subor }}</code></td>
-                        <td>{{ format_datum(a.vytvorena) }}</td>
-                        <td><small class="text-muted">{{ a.poznamka or '' }}</small></td>
-                        <td class="text-end">
-                            <div class="btn-group btn-group-sm">
-                                {% if not a.je_aktivna %}
-                                <a href="{{ url_for('otvorit_agendu_route', subor=a.subor) }}" class="btn btn-outline-primary"
-                                   title="Otvoriť / Prepnúť">
-                                    <i class="bi bi-box-arrow-in-right"></i>
-                                </a>
-                                {% endif %}
-                                <a href="{{ url_for('exportovat_agendu_route', subor=a.subor) }}" class="btn btn-outline-success"
-                                   title="Exportovať">
-                                    <i class="bi bi-download"></i>
-                                </a>
-                                <a href="{{ url_for('resetnut_agendu_route', subor=a.subor) }}" class="btn btn-outline-warning"
-                                   title="Resetnúť" onclick="return confirm('Naozaj chcete resetnúť túto agendu? Všetky doklady budú vymazané!')">
-                                    <i class="bi bi-arrow-counterclockwise"></i>
-                                </a>
-                                <a href="{{ url_for('zmazat_agendu_route', subor=a.subor) }}" class="btn btn-outline-danger"
-                                   title="Zmazať" onclick="return confirm('Naozaj chcete zmazať túto agendu? Táto akcia je nevratná!')">
-                                    <i class="bi bi-trash"></i>
-                                </a>
+                <div class="tab-content" id="agendaTabsContent">
+
+                    <div class="tab-pane fade show active" id="tab-agendy" role="tabpanel">
+                        <div class="card mb-4 border-light">
+                            <div class="card-header bg-primary text-white">
+                                <h5 class="mb-0"><i class="bi bi-plus-circle"></i> Vytvoriť novú agendu</h5>
                             </div>
-                        </td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
+                            <div class="card-body">
+                                <form method="post" action="{{ url_for('vytvorit_agendu_route') }}">
+                                    <div class="row">
+                                        <div class="col-md-4 mb-3">
+                                            <label class="form-label">Názov agendy (názov firmy) *</label>
+                                            <input type="text" name="nazov" class="form-control" required placeholder="napr. Moja firma s.r.o.">
+                                        </div>
+                                        <div class="col-md-3 mb-3">
+                                            <label class="form-label">Názov súboru (.db)</label>
+                                            <input type="text" name="subor" class="form-control" placeholder="napr. moja_firma.db">
+                                            <small class="text-muted">Voliteľné — vygeneruje sa automaticky</small>
+                                        </div>
+                                        <div class="col-md-3 mb-3">
+                                            <label class="form-label">Cesta k databáze</label>
+                                            <input type="text" name="cesta_k_db" class="form-control" placeholder="napr. C:\agendy\moja_firma.db">
+                                            <small class="text-muted">Voliteľné — použije sa predvolený adresár</small>
+                                        </div>
+                                        <div class="col-md-2 mb-3 d-flex align-items-end">
+                                            <button type="submit" class="btn btn-success w-100"><i class="bi bi-plus-lg"></i> Vytvoriť</button>
+                                        </div>
+                                    </div>
+                                    <div class="row">
+                                        <div class="col-md-12 mb-3">
+                                            <label class="form-label">Poznámka</label>
+                                            <input type="text" name="poznamka" class="form-control" placeholder="Voliteľná poznámka">
+                                        </div>
+                                    </div>
+                                </form>
+                            </div>
+                        </div>
+
+                        <div class="row mb-4">
+                            <div class="col-md-6">
+                                <div class="card h-100 border-light">
+                                    <div class="card-header bg-info text-white">
+                                        <h5 class="mb-0"><i class="bi bi-upload"></i> Importovať agendu zo súboru</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <form method="post" action="{{ url_for('importovat_agendu_route') }}" enctype="multipart/form-data">
+                                            <div class="mb-3">
+                                                <label class="form-label">Súbor databázy (.db)</label>
+                                                <input type="file" name="soubor" class="form-control" accept=".db" required>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label">Nový názov (voliteľné)</label>
+                                                <input type="text" name="novy_nazov" class="form-control" placeholder="Ponechajte prázdne pre pôvodný názov">
+                                            </div>
+                                            <button type="submit" class="btn btn-info w-100"><i class="bi bi-upload"></i> Importovať</button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="card h-100 border-light">
+                                    <div class="card-header bg-success text-white">
+                                        <h5 class="mb-0"><i class="bi bi-file-earmark-excel"></i> Exportovať agendu do Excelu</h5>
+                                    </div>
+                                    <div class="card-body">
+                                        <p class="text-muted mb-3">Exportuje celú agendu do Excel súboru (.xlsx). Každá tabuľka je v samostatnom sheete.</p>
+                                        <div class="d-flex flex-wrap gap-2">
+                                            {% for a in agendy %}
+                                            <a href="{{ url_for('exportovat_agendu_excel_route', subor=a.subor) }}" class="btn btn-success">
+                                                <i class="bi bi-file-earmark-excel"></i> {{ a.nazov }}
+                                            </a>
+                                            {% endfor %}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="card border-light">
+                            <div class="card-header">
+                                <h5 class="mb-0"><i class="bi bi-list"></i> Zoznam agend</h5>
+                            </div>
+                            <div class="card-body">
+                                {% if agendy %}
+                                <div class="table-responsive">
+                                    <table class="table table-hover">
+                                        <thead>
+                                            <tr><th>Stav</th><th>Názov</th><th>Súbor</th><th>Vytvorená</th><th>Poznámka</th><th class="text-end">Akcie</th></tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for a in agendy %}
+                                            <tr class="{{ 'table-success' if a.je_aktivna else '' }}">
+                                                <td>
+                                                    {% if a.je_aktivna %}<span class="badge bg-success"><i class="bi bi-check-circle"></i> Aktívna</span>
+                                                    {% else %}<span class="badge bg-secondary">Neaktívna</span>{% endif %}
+                                                </td>
+                                                <td><strong>{{ a.nazov }}</strong></td>
+                                                <td><code>{{ a.subor }}</code></td>
+                                                <td>{{ format_datum(a.vytvorena) }}</td>
+                                                <td><small class="text-muted">{{ a.poznamka or '' }}</small></td>
+                                                <td class="text-end">
+                                                    <div class="btn-group btn-group-sm">
+                                                        {% if not a.je_aktivna %}
+                                                        <a href="{{ url_for('otvorit_agendu_route', subor=a.subor) }}" class="btn btn-outline-primary" title="Otvoriť / Prepnúť"><i class="bi bi-box-arrow-in-right"></i></a>
+                                                        {% endif %}
+                                                        <button type="button" class="btn btn-outline-info" title="Upraviť" data-bs-toggle="modal" data-bs-target="#upravitAgenduModal" data-subor="{{ a.subor }}" data-nazov="{{ a.nazov }}" data-poznamka="{{ a.poznamka or '' }}" onclick="naplnModalUpravit(this)"><i class="bi bi-pencil"></i></button>
+                                                        <a href="{{ url_for('exportovat_agendu_route', subor=a.subor) }}" class="btn btn-outline-secondary" title="Exportovať (.db)"><i class="bi bi-download"></i></a>
+                                                        <a href="{{ url_for('exportovat_agendu_excel_route', subor=a.subor) }}" class="btn btn-outline-success" title="Exportovať do Excelu"><i class="bi bi-file-earmark-excel"></i></a>
+                                                        <a href="{{ url_for('resetnut_agendu_route', subor=a.subor) }}" class="btn btn-outline-warning" title="Resetnúť" onclick="return confirm('Naozaj chcete resetnúť túto agendu?')"><i class="bi bi-arrow-counterclockwise"></i></a>
+                                                        <a href="{{ url_for('zmazat_agendu_route', subor=a.subor) }}" class="btn btn-outline-danger" title="Zmazať" onclick="return confirm('Naozaj chcete zmazať túto agendu?')"><i class="bi bi-trash"></i></a>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                {% else %}
+                                <div class="text-center text-muted py-5"><i class="bi bi-inbox fs-1"></i><br>Žiadne agendy<br><small>Vytvorte prvú agendu vyššie</small></div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="tab-pane fade" id="tab-zobrazenie" role="tabpanel">
+                        <form method="post" action="{{ url_for('api_zobrazenie_post') }}">
+                            <h5 class="text-primary mb-3"><i class="bi bi-brightness-high"></i> Téma</h5>
+                            <div class="row mb-4">
+                                <div class="col-md-6">
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="radio" name="tema" id="temaLight" value="light" {% if zobrazenie.tema == 'light' %}checked{% endif %}>
+                                        <label class="form-check-label" for="temaLight"><i class="bi bi-sun"></i> Svetlá</label>
+                                    </div>
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="radio" name="tema" id="temaDark" value="dark" {% if zobrazenie.tema == 'dark' %}checked{% endif %}>
+                                        <label class="form-check-label" for="temaDark"><i class="bi bi-moon"></i> Tmavá</label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <h5 class="text-primary mb-3"><i class="bi bi-arrows-angle-expand"></i> Hustota zobrazenia</h5>
+                            <div class="row mb-4">
+                                <div class="col-md-8">
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="radio" name="hustota" id="hustotaCompact" value="compact" {% if zobrazenie.hustota == 'compact' %}checked{% endif %}>
+                                        <label class="form-check-label" for="hustotaCompact">Kompaktná</label>
+                                    </div>
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="radio" name="hustota" id="hustotaNormal" value="normal" {% if zobrazenie.hustota == 'normal' %}checked{% endif %}>
+                                        <label class="form-check-label" for="hustotaNormal">Normálna <span class="badge bg-success">predvolené</span></label>
+                                    </div>
+                                    <div class="form-check form-check-inline">
+                                        <input class="form-check-input" type="radio" name="hustota" id="hustotaComfortable" value="comfortable" {% if zobrazenie.hustota == 'comfortable' %}checked{% endif %}>
+                                        <label class="form-check-label" for="hustotaComfortable">Komfortná</label>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <h5 class="text-primary mb-3"><i class="bi bi-calendar-date"></i> Formát dátumu</h5>
+                            <div class="row mb-4">
+                                <div class="col-md-6">
+                                    <select name="format_datumu" class="form-select">
+                                        <option value="sk" {% if zobrazenie.format_datumu == 'sk' %}selected{% endif %}>Slovenský (15. mar 2026)</option>
+                                        <option value="sk_long" {% if zobrazenie.format_datumu == 'sk_long' %}selected{% endif %}>Slovenský dlhý (15. marec 2026)</option>
+                                        <option value="iso" {% if zobrazenie.format_datumu == 'iso' %}selected{% endif %}>ISO (2026-03-15)</option>
+                                        <option value="eu" {% if zobrazenie.format_datumu == 'eu' %}selected{% endif %}>Európsky (15. 03. 2026)</option>
+                                        <option value="us" {% if zobrazenie.format_datumu == 'us' %}selected{% endif %}>Americký (03/15/2026)</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <h5 class="text-primary mb-3"><i class="bi bi-123"></i> Formát čísel</h5>
+                            <div class="row mb-4">
+                                <div class="col-md-6">
+                                    <select name="format_cisla" class="form-select">
+                                        <option value="sk" {% if zobrazenie.format_cisla == 'sk' %}selected{% endif %}>Slovenský (1 234,56)</option>
+                                        <option value="en" {% if zobrazenie.format_cisla == 'en' %}selected{% endif %}>Anglický (1,234.56)</option>
+                                        <option value="de" {% if zobrazenie.format_cisla == 'de' %}selected{% endif %}>Nemecký (1.234,56)</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <h5 class="text-primary mb-3"><i class="bi bi-currency-euro"></i> Formát meny</h5>
+                            <div class="row mb-4">
+                                <div class="col-md-6">
+                                    <select name="format_meny" class="form-select">
+                                        <option value="sk" {% if zobrazenie.format_meny == 'sk' %}selected{% endif %}>Slovenský (1 234,56 EUR)</option>
+                                        <option value="en" {% if zobrazenie.format_meny == 'en' %}selected{% endif %}>Anglický (€1,234.56)</option>
+                                        <option value="symbol" {% if zobrazenie.format_meny == 'symbol' %}selected{% endif %}>Symbol (1 234,56 €)</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <h5 class="text-primary mb-3"><i class="bi bi-translate"></i> Jazyk rozhrania</h5>
+                            <div class="row mb-4">
+                                <div class="col-md-6">
+                                    <select name="jazyk" class="form-select">
+                                        <option value="sk" {% if zobrazenie.jazyk == 'sk' %}selected{% endif %}>Slovenčina</option>
+                                        <option value="en" {% if zobrazenie.jazyk == 'en' %}selected{% endif %}>English</option>
+                                        <option value="cz" {% if zobrazenie.jazyk == 'cz' %}selected{% endif %}>Čeština</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <h5 class="text-primary mb-3"><i class="bi bi-type"></i> Písmo</h5>
+                            <div class="row mb-3">
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Druh písma</label>
+                                    <select name="font_family" class="form-select">
+                                        <option value="" {% if not zobrazenie.font_family %}selected{% endif %}>Predvolené (Segoe UI)</option>
+                                        <option value="'Roboto', sans-serif" {% if zobrazenie.font_family == "'Roboto', sans-serif" %}selected{% endif %}>Roboto</option>
+                                        <option value="'Open Sans', sans-serif" {% if zobrazenie.font_family == "'Open Sans', sans-serif" %}selected{% endif %}>Open Sans</option>
+                                        <option value="'Lato', sans-serif" {% if zobrazenie.font_family == "'Lato', sans-serif" %}selected{% endif %}>Lato</option>
+                                        <option value="'Montserrat', sans-serif" {% if zobrazenie.font_family == "'Montserrat', sans-serif" %}selected{% endif %}>Montserrat</option>
+                                        <option value="'Inter', sans-serif" {% if zobrazenie.font_family == "'Inter', sans-serif" %}selected{% endif %}>Inter</option>
+                                        <option value="'Georgia', serif" {% if zobrazenie.font_family == "'Georgia', serif" %}selected{% endif %}>Georgia (serif)</option>
+                                        <option value="'Courier New', monospace" {% if zobrazenie.font_family == "'Courier New', monospace" %}selected{% endif %}>Courier New (monospace)</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label class="form-label">Základná veľkosť písma (px)</label>
+                                    <select name="font_size" class="form-select">
+                                        <option value="14" {% if zobrazenie.font_size == '14' %}selected{% endif %}>14px (malé)</option>
+                                        <option value="16" {% if zobrazenie.font_size == '16' %}selected{% endif %}>16px (normálne) <span class="badge bg-success">predvolené</span></option>
+                                        <option value="18" {% if zobrazenie.font_size == '18' %}selected{% endif %}>18px (veľké)</option>
+                                        <option value="20" {% if zobrazenie.font_size == '20' %}selected{% endif %}>20px (extra veľké)</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <h6 class="text-muted mb-3"><i class="bi bi-sliders"></i> Veľkosť písma pre jednotlivé komponenty (násobok základnej veľkosti)</h6>
+                            <div class="row mb-4">
+                                <div class="col-md-3 mb-3">
+                                    <label class="form-label">Nadpisy</label>
+                                    <select name="font_size_nadpisy" class="form-select">
+                                        <option value="" {% if not zobrazenie.font_size_nadpisy %}selected{% endif %}>Predvolené</option>
+                                        <option value="0.85" {% if zobrazenie.font_size_nadpisy == '0.85' %}selected{% endif %}>0.85× (menšie)</option>
+                                        <option value="1.0" {% if zobrazenie.font_size_nadpisy == '1.0' %}selected{% endif %}>1.0× (normálne)</option>
+                                        <option value="1.15" {% if zobrazenie.font_size_nadpisy == '1.15' %}selected{% endif %}>1.15× (väčšie)</option>
+                                        <option value="1.3" {% if zobrazenie.font_size_nadpisy == '1.3' %}selected{% endif %}>1.3× (extra veľké)</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3 mb-3">
+                                    <label class="form-label">Tabuľky</label>
+                                    <select name="font_size_tabulky" class="form-select">
+                                        <option value="" {% if not zobrazenie.font_size_tabulky %}selected{% endif %}>Predvolené</option>
+                                        <option value="0.8" {% if zobrazenie.font_size_tabulky == '0.8' %}selected{% endif %}>0.8× (kompaktné)</option>
+                                        <option value="0.9" {% if zobrazenie.font_size_tabulky == '0.9' %}selected{% endif %}>0.9× (menšie)</option>
+                                        <option value="1.0" {% if zobrazenie.font_size_tabulky == '1.0' %}selected{% endif %}>1.0× (normálne)</option>
+                                        <option value="1.1" {% if zobrazenie.font_size_tabulky == '1.1' %}selected{% endif %}>1.1× (väčšie)</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3 mb-3">
+                                    <label class="form-label">Formuláre</label>
+                                    <select name="font_size_formulare" class="form-select">
+                                        <option value="" {% if not zobrazenie.font_size_formulare %}selected{% endif %}>Predvolené</option>
+                                        <option value="0.9" {% if zobrazenie.font_size_formulare == '0.9' %}selected{% endif %}>0.9× (menšie)</option>
+                                        <option value="1.0" {% if zobrazenie.font_size_formulare == '1.0' %}selected{% endif %}>1.0× (normálne)</option>
+                                        <option value="1.1" {% if zobrazenie.font_size_formulare == '1.1' %}selected{% endif %}>1.1× (väčšie)</option>
+                                        <option value="1.2" {% if zobrazenie.font_size_formulare == '1.2' %}selected{% endif %}>1.2× (extra veľké)</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3 mb-3">
+                                    <label class="form-label">Poznámky</label>
+                                    <select name="font_size_poznamky" class="form-select">
+                                        <option value="0.75" {% if zobrazenie.font_size_poznamky == '0.75' %}selected{% endif %}>0.75× (veľmi malé)</option>
+                                        <option value="0.85" {% if zobrazenie.font_size_poznamky == '0.85' %}selected{% endif %}>0.85× (malé) <span class="badge bg-success">predvolené</span></option>
+                                        <option value="0.95" {% if zobrazenie.font_size_poznamky == '0.95' %}selected{% endif %}>0.95× (normálne)</option>
+                                        <option value="1.0" {% if zobrazenie.font_size_poznamky == '1.0' %}selected{% endif %}>1.0× (rovnaké ako text)</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <hr class="my-4">
+                            <div class="d-flex gap-2">
+                                <button type="submit" class="btn btn-primary"><i class="bi bi-check-circle"></i> Uložiť nastavenia</button>
+                            </div>
+                        </form>
+                    </div>
+
+                    <div class="tab-pane fade" id="tab-typy" role="tabpanel">
+                        <div class="alert alert-info mb-3">
+                            <i class="bi bi-info-circle"></i>
+                            <strong>Agenda-špecifické typy dokladov</strong> prepisujú globálne nastavenia z <a href="{{ url_for('system_catalog') }}">Globálnych nastavení</a>.
+                            Ak tu pre daný typ dokladu nič nenastavíte, použijú sa globálne hodnoty.
+                        </div>
+
+                        <ul class="nav nav-tabs mb-3" id="typyDokladovTabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="typ-prijem-tab" data-bs-toggle="tab" data-bs-target="#typ-prijem" type="button" role="tab">
+                                    <i class="bi bi-file-earmark-arrow-up"></i> Príjem
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="typ-vydavok-tab" data-bs-toggle="tab" data-bs-target="#typ-vydavok" type="button" role="tab">
+                                    <i class="bi bi-file-earmark-arrow-down"></i> Výdavok
+                                </button>
+                            </li>
+                        </ul>
+
+                        <div class="tab-content">
+                            <div class="tab-pane fade show active" id="typ-prijem" role="tabpanel">
+                                <div class="table-responsive mb-4">
+                                    <table class="table table-bordered table-sm">
+                                        <thead class="table-light"><tr><th>Kód</th><th>Názov</th><th>Popis</th><th>Status</th><th style="width:8%"></th></tr></thead>
+                                        <tbody>
+                                            {% for item in typ_prijem %}
+                                            <tr>
+                                                <td><code>{{ item.kod }}</code></td>
+                                                <td>{{ item.nazov }}</td>
+                                                <td><small class="text-muted">{{ item.popis or '' }}</small></td>
+                                                <td>{% if item.je_aktivny %}<span class="badge bg-success">Aktívny</span>{% else %}<span class="badge bg-secondary">Neaktívny</span>{% endif %}</td>
+                                                <td class="text-center">
+                                                    <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editModalPrijem{{ item.id }}"><i class="bi bi-pencil"></i></button>
+                                                    <a href="{{ url_for('zmazat_agenda_typ_dokladu_route', id=item.id) }}" class="btn btn-sm btn-outline-danger ms-1" onclick="return confirm('Naozaj chcete zmazať tento typ dokladu?')"><i class="bi bi-trash"></i></a>
+                                                </td>
+                                            </tr>
+                                            {% else %}
+                                            <tr><td colspan="5" class="text-center text-muted py-4">Žiadne agenda-špecifické typy dokladov pre príjem. Používajú sa <a href="{{ url_for('system_catalog') }}">globálne nastavenia</a>.</td></tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div class="card border-light">
+                                    <div class="card-header"><h6 class="mb-0"><i class="bi bi-plus-circle"></i> Pridať nový typ dokladu — Príjem</h6></div>
+                                    <div class="card-body">
+                                        <form method="post" action="{{ url_for('pridat_agenda_typ_dokladu_route') }}">
+                                            <input type="hidden" name="typ" value="prijem">
+                                            <div class="row">
+                                                <div class="col-md-3 mb-3"><label class="form-label">Kód *</label><input type="text" name="kod" class="form-control" required placeholder="napr. faktura"></div>
+                                                <div class="col-md-4 mb-3"><label class="form-label">Názov *</label><input type="text" name="nazov" class="form-control" required placeholder="napr. Faktúra vystavená"></div>
+                                                <div class="col-md-4 mb-3"><label class="form-label">Popis</label><input type="text" name="popis" class="form-control" placeholder="Voliteľný popis"></div>
+                                                <div class="col-md-1 mb-3 d-flex align-items-end"><button type="submit" class="btn btn-success w-100"><i class="bi bi-plus-lg"></i></button></div>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="tab-pane fade" id="typ-vydavok" role="tabpanel">
+                                <div class="table-responsive mb-4">
+                                    <table class="table table-bordered table-sm">
+                                        <thead class="table-light"><tr><th>Kód</th><th>Názov</th><th>Popis</th><th>Status</th><th style="width:8%"></th></tr></thead>
+                                        <tbody>
+                                            {% for item in typ_vydavok %}
+                                            <tr>
+                                                <td><code>{{ item.kod }}</code></td>
+                                                <td>{{ item.nazov }}</td>
+                                                <td><small class="text-muted">{{ item.popis or '' }}</small></td>
+                                                <td>{% if item.je_aktivny %}<span class="badge bg-success">Aktívny</span>{% else %}<span class="badge bg-secondary">Neaktívny</span>{% endif %}</td>
+                                                <td class="text-center">
+                                                    <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#editModalVydavok{{ item.id }}"><i class="bi bi-pencil"></i></button>
+                                                    <a href="{{ url_for('zmazat_agenda_typ_dokladu_route', id=item.id) }}" class="btn btn-sm btn-outline-danger ms-1" onclick="return confirm('Naozaj chcete zmazať tento typ dokladu?')"><i class="bi bi-trash"></i></a>
+                                                </td>
+                                            </tr>
+                                            {% else %}
+                                            <tr><td colspan="5" class="text-center text-muted py-4">Žiadne agenda-špecifické typy dokladov pre výdavok. Používajú sa <a href="{{ url_for('system_catalog') }}">globálne nastavenia</a>.</td></tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
+                                </div>
+                                <div class="card border-light">
+                                    <div class="card-header"><h6 class="mb-0"><i class="bi bi-plus-circle"></i> Pridať nový typ dokladu — Výdavok</h6></div>
+                                    <div class="card-body">
+                                        <form method="post" action="{{ url_for('pridat_agenda_typ_dokladu_route') }}">
+                                            <input type="hidden" name="typ" value="vydavok">
+                                            <div class="row">
+                                                <div class="col-md-3 mb-3"><label class="form-label">Kód *</label><input type="text" name="kod" class="form-control" required placeholder="napr. faktura"></div>
+                                                <div class="col-md-4 mb-3"><label class="form-label">Názov *</label><input type="text" name="nazov" class="form-control" required placeholder="napr. Faktúra prijatá"></div>
+                                                <div class="col-md-4 mb-3"><label class="form-label">Popis</label><input type="text" name="popis" class="form-control" placeholder="Voliteľný popis"></div>
+                                                <div class="col-md-1 mb-3 d-flex align-items-end"><button type="submit" class="btn btn-success w-100"><i class="bi bi-plus-lg"></i></button></div>
+                                            </div>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Číselné rady -->
+                    <div class="tab-pane fade" id="tab-cisleniky" role="tabpanel">
+                        <div class="d-flex justify-content-between align-items-center mb-3">
+                            <h5><i class="bi bi-list-ol"></i> Číselné rady</h5>
+                            <a href="{{ url_for('pridat_ciselnik') }}" class="btn btn-primary btn-sm"><i class="bi bi-plus-circle"></i> Pridať číselnú radu</a>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle">
+                                <thead class="table-light">
+                                    <tr><th>Názov</th><th>Typ</th><th>Prefix</th><th>Vzor</th><th>Aktuálne číslo</th><th>Náhľad</th><th>Stav</th><th class="text-center">Akcie</th></tr>
+                                </thead>
+                                <tbody>
+                                    {% for c in ciselniky %}
+                                    <tr>
+                                        <td><strong>{{ c.nazov }}</strong></td>
+                                        <td>{% if c.typ_dokladu == 'prijem' %}<span class="badge bg-success">Príjem</span>{% else %}<span class="badge bg-danger">Výdavok</span>{% endif %}</td>
+                                        <td><code>{{ c.prefix or '-' }}</code></td>
+                                        <td><code>{{ c.vzor }}</code></td>
+                                        <td>{{ c.aktualne_cislo }}</td>
+                                        <td>
+                                            <span class="badge bg-primary">
+                                                {% set datum = now() %}
+                                                {% set cislo_str = (c.aktualne_cislo + 1) | string %}
+                                                {% set cislo_str = cislo_str.zfill(c.pocet_cislic) %}
+                                                {% set nahlad = c.vzor %}
+                                                {% set nahlad = nahlad.replace('RRRR', datum.strftime('%Y')) %}
+                                                {% set nahlad = nahlad.replace('RR', datum.strftime('%y')) %}
+                                                {% set nahlad = nahlad.replace('MM', datum.strftime('%m')) %}
+                                                {% set nahlad = nahlad.replace('DD', datum.strftime('%d')) %}
+                                                {% set n_pattern = 'N' * c.pocet_cislic %}
+                                                {% set nahlad = nahlad.replace(n_pattern, cislo_str) %}
+                                                {% if c.prefix %}{{ c.prefix }}{{ c.oddelovac or '' }}{{ nahlad }}{% else %}{{ nahlad }}{% endif %}
+                                            </span>
+                                        </td>
+                                        <td>{% if c.je_aktivny %}<span class="badge bg-success">Aktívny</span>{% else %}<span class="badge bg-secondary">Neaktívny</span>{% endif %}</td>
+                                        <td class="text-center">
+                                            <a href="{{ url_for('upravit_ciselnik', id=c.id) }}" class="btn btn-sm btn-outline-primary me-1"><i class="bi bi-pencil"></i></a>
+                                            <a href="{{ url_for('zmazat_ciselnik', id=c.id) }}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Naozaj chcete zmazať túto číselnú radu?')"><i class="bi bi-trash"></i></a>
+                                        </td>
+                                    </tr>
+                                    {% else %}
+                                    <tr><td colspan="8" class="text-center text-muted py-4"><i class="bi bi-inbox fs-1"></i><br>Žiadne číselné rady</td></tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
         </div>
-        {% else %}
-        <div class="text-center text-muted py-5">
-            <i class="bi bi-inbox fs-1"></i><br>
-            Žiadne agendy
-            <br>
-            <small>Vytvorte prvú agendu vyššie</small>
-        </div>
-        {% endif %}
     </div>
 </div>
 
-<div class="alert alert-info mt-4">
-    <i class="bi bi-info-circle"></i>
-    <strong>Čo je agenda?</strong> Agenda je samostatná databáza pre každú firmu. Môžete mať viac agend (napr. pre rôzne firmy alebo roky) a prepínať medzi nimi.
+<div class="modal fade" id="upravitAgenduModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <form method="post" action="{{ url_for('upravit_agendu_route') }}">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bi bi-pencil"></i> Upraviť agendu</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Zavrieť"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" name="subor" id="editSubor">
+                    <div class="mb-3"><label class="form-label">Názov agendy</label><input type="text" name="nazov" id="editNazov" class="form-control" required></div>
+                    <div class="mb-3"><label class="form-label">Názov súboru (.db)</label><input type="text" name="novy_subor" id="editNovySubor" class="form-control" placeholder="Ponechajte prázdne pre pôvodný názov"><small class="text-muted">Zmena názvu súboru premenuje aj fyzický súbor.</small></div>
+                    <div class="mb-3"><label class="form-label">Poznámka</label><input type="text" name="poznamka" id="editPoznamka" class="form-control" placeholder="Voliteľná poznámka"></div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Zrušiť</button>
+                    <button type="submit" class="btn btn-primary">Uložiť zmeny</button>
+                </div>
+            </form>
+        </div>
+    </div>
 </div>
+
+{% for item in typ_prijem %}
+<div class="modal fade" id="editModalPrijem{{ item.id }}" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">Upraviť: {{ item.nazov }}</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Zavrieť"></button>
+            </div>
+            <form method="post" action="{{ url_for('upravit_agenda_typ_dokladu_route', id=item.id) }}">
+                <div class="modal-body">
+                    <div class="mb-3"><label class="form-label">Názov</label><input type="text" name="nazov" class="form-control" value="{{ item.nazov }}" required></div>
+                    <div class="mb-3"><label class="form-label">Popis</label><input type="text" name="popis" class="form-control" value="{{ item.popis or '' }}"></div>
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" name="je_aktivny" class="form-check-input" id="aktivnyPrijem{{ item.id }}" {% if item.je_aktivny %}checked{% endif %}>
+                        <label class="form-check-label" for="aktivnyPrijem{{ item.id }}">Aktívny</label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Zrušiť</button>
+                    <button type="submit" class="btn btn-primary">Uložiť</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+{% for item in typ_vydavok %}
+<div class="modal fade" id="editModalVydavok{{ item.id }}" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title">Upraviť: {{ item.nazov }}</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Zavrieť"></button>
+            </div>
+            <form method="post" action="{{ url_for('upravit_agenda_typ_dokladu_route', id=item.id) }}">
+                <div class="modal-body">
+                    <div class="mb-3"><label class="form-label">Názov</label><input type="text" name="nazov" class="form-control" value="{{ item.nazov }}" required></div>
+                    <div class="mb-3"><label class="form-label">Popis</label><input type="text" name="popis" class="form-control" value="{{ item.popis or '' }}"></div>
+                    <div class="mb-3 form-check">
+                        <input type="checkbox" name="je_aktivny" class="form-check-input" id="aktivnyVydavok{{ item.id }}" {% if item.je_aktivny %}checked{% endif %}>
+                        <label class="form-check-label" for="aktivnyVydavok{{ item.id }}">Aktívny</label>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Zrušiť</button>
+                    <button type="submit" class="btn btn-primary">Uložiť</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+<script>
+function naplnModalUpravit(btn) {
+    document.getElementById('editSubor').value = btn.dataset.subor;
+    document.getElementById('editNazov').value = btn.dataset.nazov;
+    document.getElementById('editPoznamka').value = btn.dataset.poznamka;
+    document.getElementById('editNovySubor').value = '';
+}
+</script>
+
+<script>
+function naplnModalUpravit(btn) {
+    document.getElementById('editSubor').value = btn.dataset.subor;
+    document.getElementById('editNazov').value = btn.dataset.nazov;
+    document.getElementById('editPoznamka').value = btn.dataset.poznamka;
+    document.getElementById('editNovySubor').value = '';
+}
+</script>
+
 {% endblock %}

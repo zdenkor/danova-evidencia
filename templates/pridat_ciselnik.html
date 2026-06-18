@@ -1,19 +1,19 @@
 {% extends "base.html" %}
 
-{% block title %}Pridať číselník - Daňová evidencia{% endblock %}
+{% block title %}Pridať číselnú radu - Daňová evidencia{% endblock %}
 
 {% block content %}
 <div class="row justify-content-center">
     <div class="col-lg-8">
         <div class="card">
             <div class="card-header bg-primary text-white">
-                <h4 class="mb-0"><i class="bi bi-plus-circle"></i> Pridať číselník dokladov</h4>
+                <h4 class="mb-0"><i class="bi bi-plus-circle"></i> Pridať číselnú radu dokladov</h4>
             </div>
             <div class="card-body">
                 <form method="post" id="ciselnikForm">
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label class="form-label">Názov číselníka *</label>
+                            <label class="form-label">Názov číselnej rady *</label>
                             <input type="text" name="nazov" class="form-control" required
                                    placeholder="napr. Faktúra vystavená">
                         </div>
@@ -78,7 +78,7 @@
                         <div class="col-md-6 mb-3">
                             <label class="form-label">Poznámka</label>
                             <input type="text" name="poznamka" class="form-control"
-                                   placeholder="Popis číselníka">
+                                   placeholder="Popis číselnej rady">
                         </div>
                     </div>
 
@@ -86,14 +86,14 @@
                         <div class="form-check">
                             <input type="checkbox" name="je_aktivny" class="form-check-input" id="je_aktivny" checked>
                             <label class="form-check-label" for="je_aktivny">
-                                Číselník je aktívny
+                                Číselná rada je aktívna
                             </label>
                         </div>
                     </div>
 
                     <div class="d-flex gap-2">
                         <button type="submit" class="btn btn-primary">
-                            <i class="bi bi-check-circle"></i> Uložiť číselník
+                            <i class="bi bi-check-circle"></i> Uložiť číselnú radu
                         </button>
                         <a href="{{ url_for('ciselniky') }}" class="btn btn-outline-secondary">
                             <i class="bi bi-x-circle"></i> Zrušiť

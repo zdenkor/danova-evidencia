@@ -71,12 +71,49 @@
                     <h5 class="text-primary mb-3">Bankové údaje</h5>
                     <div class="row">
                         <div class="col-md-6 mb-3">
-                            <label class="form-label">Bankový účet</label>
-                            <input type="text" name="bankovy_ucet" class="form-control"
-                                   value="{{ nastavenia.bankovy_ucet or '' }}"
-                                   placeholder="1234567890/1100">
+                            <label class="form-label">Banka</label>
+                            <select name="banka" class="form-select" id="bankaSelect"
+                                    onchange="onBankaChange(this)">
+                                <option value="">-- Vyberte banku --</option>
+                                {% for b in banky %}
+                                <option value="{{ b.nazov }}" data-swift="{{ b.hodnota or b.kod }}"
+                                        {% if nastavenia.banka == b.nazov %}selected{% endif %}>{{ b.nazov }}</option>
+                                {% endfor %}
+                                <option value="Iná">Iná (vlastná hodnota)</option>
+                            </select>
+                            <input type="text" name="banka_vlastna" id="bankaVlastna" class="form-control mt-2"
+                                   placeholder="Zadajte názov banky" style="display:none;"
+                                   value="{% if nastavenia.banka and nastavenia.banka not in banky|map(attribute='nazov')|list %}{{ nastavenia.banka }}{% endif %}">
                         </div>
                         <div class="col-md-6 mb-3">
+                            <label class="form-label">SWIFT/BIC kód</label>
+                            <input type="text" name="swift" id="swiftInput" class="form-control"
+                                   value="{{ nastavenia.swift or '' }}"
+                                   placeholder="napr. TATRSKBX">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Predčísle účtu</label>
+                            <input type="text" name="predcislie" class="form-control"
+                                   value="{{ nastavenia.predcislie or '' }}"
+                                   placeholder="napr. 123">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Číslo účtu</label>
+                            <input type="text" name="cislo_uctu" class="form-control"
+                                   value="{{ nastavenia.cislo_uctu or '' }}"
+                                   placeholder="napr. 1234567890">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Kód banky</label>
+                            <input type="text" name="bankovy_ucet" class="form-control"
+                                   value="{{ nastavenia.bankovy_ucet or '' }}"
+                                   placeholder="napr. 1100">
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-12 mb-3">
                             <label class="form-label">IBAN</label>
                             <input type="text" name="iban" class="form-control"
                                    value="{{ nastavenia.iban or '' }}"
@@ -158,9 +195,9 @@
                         </a>
                         <a href="{{ url_for('system_catalog') }}" class="list-group-item list-group-item-action d-flex justify-content-between align-items-center">
                             <div>
-                                <i class="bi bi-gear me-2"></i>
-                                <strong>Systémové katalógy</strong>
-                                <p class="mb-0 text-muted small">DPH sadzby, právne limity a typy dokladov</p>
+                                <i class="bi bi-globe me-2"></i>
+                                <strong>Globálne nastavenia</strong>
+                                <p class="mb-0 text-muted small">DPH sadzby, právne limity, typy dokladov a banky — platné pre všetky agendy</p>
                             </div>
                             <i class="bi bi-chevron-right"></i>
                         </a>
@@ -265,5 +302,48 @@ document.getElementById('importFile').addEventListener('change', function(e) {
     };
     reader.readAsText(file);
 });
+
+function onBankaChange(select) {
+    const vlastnaInput = document.getElementById('bankaVlastna');
+    const swiftInput = document.getElementById('swiftInput');
+    const selectedOption = select.options[select.selectedIndex];
+    
+    if (select.value === 'Iná') {
+        vlastnaInput.style.display = 'block';
+        vlastnaInput.required = true;
+        swiftInput.value = '';
+    } else {
+        vlastnaInput.style.display = 'none';
+        vlastnaInput.required = false;
+        const swift = selectedOption.getAttribute('data-swift');
+        if (swift) {
+            swiftInput.value = swift;
+        }
+    }
+}
+
+// Inicializácia pri načítaní stránky
+(function() {
+    const bankaSelect = document.getElementById('bankaSelect');
+    const vlastnaInput = document.getElementById('bankaVlastna');
+    const currentBanka = vlastnaInput.value || '';
+    
+    if (currentBanka) {
+        // Skontroluj či aktuálna hodnota je v zozname
+        let found = false;
+        for (let i = 0; i < bankaSelect.options.length; i++) {
+            if (bankaSelect.options[i].value === currentBanka) {
+                bankaSelect.selectedIndex = i;
+                found = true;
+                break;
+            }
+        }
+        if (!found && currentBanka) {
+            bankaSelect.value = 'Iná';
+            vlastnaInput.style.display = 'block';
+            vlastnaInput.value = currentBanka;
+        }
+    }
+})();
 </script>
 {% endblock %}

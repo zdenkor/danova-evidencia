@@ -1,18 +1,22 @@
 {% extends "base.html" %}
 
-{% block title %}Číselníky - Daňová evidencia{% endblock %}
+{% block title %}Číselné rady - Daňová evidencia{% endblock %}
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h2><i class="bi bi-list-ol text-primary"></i> Číselníky</h2>
+    <h2><i class="bi bi-list-ol text-primary"></i> Číselné rady</h2>
     <a href="{{ url_for('pridat_ciselnik') }}" class="btn btn-primary">
-        <i class="bi bi-plus-circle"></i> Pridať číselník
+        <i class="bi bi-plus-circle"></i> Pridať číselnú radu
     </a>
 </div>
 
-<div class="alert alert-info mb-4">
+{% include "includes/agenda_tabs.html" %}
+
+<div class="tab-content">
+    <div class="tab-pane show active">
+        <div class="alert alert-info mb-4">
     <i class="bi bi-info-circle me-2"></i>
-    <strong>Ako fungujú číselníky:</strong> Pre každý typ dokladu si definujete vzor číslovania.
+    <strong>Ako fungujú číselné rady:</strong> Pre každý typ dokladu si definujete vzor číslovania.
     Podporované premenné: <code>RRRR</code> (rok 4 číslice), <code>RR</code> (rok 2 číslice),
     <code>MM</code> (mesiac), <code>DD</code> (deň), <code>NNNNNN</code> (poradové číslo).
     Príklad: <code>FV-RRRR-NNNNNN</code> → FV-2026-000001
@@ -87,7 +91,7 @@
                 <tr>
                     <td colspan="8" class="text-center text-muted py-4">
                         <i class="bi bi-inbox fs-1"></i><br>
-                        Žiadne číselníky
+                        Žiadne číselné rady
                     </td>
                 </tr>
                 {% endfor %}
@@ -98,7 +102,7 @@
 
 <div class="card mt-4">
     <div class="card-header bg-white">
-        <h5 class="mb-0"><i class="bi bi-question-circle"></i> Návod na používanie číselníkov</h5>
+        <h5 class="mb-0"><i class="bi bi-question-circle"></i> Návod na používanie číselných radov</h5>
     </div>
     <div class="card-body">
         <div class="row">
@@ -123,5 +127,4 @@
             </div>
         </div>
     </div>
-</div>
-{% endblock %}
+</div></div>{% endblock %}

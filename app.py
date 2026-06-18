@@ -1,19 +1,28 @@
-from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session
+from flask import Flask, render_template, request, redirect, url_for, flash, jsonify, session, send_file
 from database import (get_db, init_db, set_db_path, DEFAULT_DB_PATH, get_agendy_dir,
                       get_agendy, get_aktivna_agenda, vytvorit_agendu, otvorit_agendu,
-                      exportovat_agendu, importovat_agendu, zmazat_agendu, resetnut_agendu,
+                      exportovat_agendu, importovat_agendu, zmazat_agendu, resetnut_agendu, upravit_agendu,
                       get_zobrazenie, update_zobrazenie,
                       get_jednotky, pridat_jednotku, upravit_jednotku, zmazat_jednotku,
                       get_sablony, get_sablona, pridat_sablonu, upravit_sablonu, zmazat_sablonu,
+                      get_global_sablony, get_global_sablona, pridat_global_sablonu, upravit_global_sablonu, zmazat_global_sablonu,
                       get_prijem_polozky, pridat_prijem_polozku, upravit_prijem_polozku, zmazat_prijem_polozku,
                       get_vydavok_polozky, pridat_vydavok_polozku, upravit_vydavok_polozku, zmazat_vydavok_polozku,
-                      get_system_catalog, get_system_catalog_item, get_dph_sadzby,
+                      get_system_catalog, get_system_catalog_item, get_dph_sadzby, get_banky,
                       get_typy_dokladov_prijem, get_typy_dokladov_vydavok, get_legal_limit,
+                      get_agenda_typy_dokladov, get_agenda_typ_dokladu,
+                      pridat_agenda_typ_dokladu, upravit_agenda_typ_dokladu, zmazat_agenda_typ_dokladu,
+                      get_vsetky_typy_dokladov,
                       update_system_catalog, ulozit_dph_sadzby_do_dokladu, ulozit_kontakt_info_do_dokladu,
                       get_objednavky, get_objednavka, get_objednavka_polozky,
-                      pridat_objednavku, upravit_objednavku, zmenit_stav_objednavky, zmazat_objednavku)
+                      pridat_objednavku, upravit_objednavku, zmenit_stav_objednavky, zmazat_objednavku,
+                      get_adresar_dorucovacie_adresy, pridat_adresar_adresu, upravit_adresar_adresu, zmazat_adresar_adresu,
+                      get_adresar_kontakty, pridat_adresar_kontakt, upravit_adresar_kontakt, zmazat_adresar_kontakt,
+                      get_adresar_bankove_ucty, pridat_adresar_bankovy_ucet, upravit_adresar_bankovy_ucet, zmazat_adresar_bankovy_ucet,
+                      get_adresar_poznamky, pridat_adresar_poznamku, upravit_adresar_poznamku, zmazat_adresar_poznamku)
 from migrations import get_current_version
 from import_export import export_data, import_data, validate_import
+from excel_export import export_agenda_to_excel, import_agenda_from_excel
 from datetime import datetime, date
 import calendar
 import re
@@ -1657,11 +1666,15 @@ def prehlad():
 def nastavenia():
     db = get_db()
     if request.method == 'POST':
+        banka_val = request.form.get('banka', '')
+        if banka_val == 'Iná':
+            banka_val = request.form.get('banka_vlastna', '')
+
         db.execute('''
             UPDATE nastavenia SET
                 nazov_firmy = ?, ico = ?, dic = ?, ic_dph = ?,
                 adresa = ?, mesto = ?, psc = ?,
-                bankovy_ucet = ?, iban = ?,
+                bankovy_ucet = ?, iban = ?, swift = ?, banka = ?, cislo_uctu = ?, predcislie = ?,
                 pausalne_vydavky = ?, platitel_dph = ?, mod = ?
             WHERE id = 1
         ''', (
@@ -1674,6 +1687,10 @@ def nastavenia():
             request.form.get('psc', ''),
             request.form.get('bankovy_ucet', ''),
             request.form.get('iban', ''),
+            request.form.get('swift', ''),
+            banka_val,
+            request.form.get('cislo_uctu', ''),
+            request.form.get('predcislie', ''),
             1 if request.form.get('pausalne_vydavky') else 0,
             1 if request.form.get('platitel_dph') else 0,
             request.form.get('mod', 'zjednoduseny')
@@ -1684,8 +1701,9 @@ def nastavenia():
         return redirect(url_for('nastavenia'))
 
     nastavenia_data = db.execute('SELECT * FROM nastavenia LIMIT 1').fetchone()
+    banky = get_banky()
     db.close()
-    return render_template('nastavenia.html', nastavenia=nastavenia_data)
+    return render_template('nastavenia.html', nastavenia=nastavenia_data, banky=banky)
 
 
 # ==================== JEDNOTKY ====================
@@ -1801,11 +1819,81 @@ def api_sablony(typ_dokladu):
     return jsonify([dict(s) for s in sablony])
 
 
+# ==================== GLOBÁLNE ŠABLÓNY (v hlavnej DB) ====================
+
+@app.route('/global-sablony')
+def global_sablony_list():
+    """Zoznam globálnych šablón v hlavnej DB."""
+    set_db_path(DEFAULT_DB_PATH)
+    sablony = get_global_sablony()
+    return render_template('global_sablony.html', sablony=sablony)
+
+
+@app.route('/global-sablony/pridat', methods=['POST'])
+def global_sablony_pridat():
+    """Pridá globálnu šablónu do hlavnej DB."""
+    set_db_path(DEFAULT_DB_PATH)
+    nazov = request.form.get('nazov', '').strip()
+    typ_dokladu = request.form.get('typ_dokladu', '').strip()
+    popis = request.form.get('popis', '').strip()
+    nazov_polozky = request.form.get('nazov_polozky', '').strip()
+    poznamka = request.form.get('poznamka', '').strip()
+    mnozstvo = float(request.form.get('mnozstvo', 1) or 1)
+    jednotka = request.form.get('jednotka', 'ks').strip()
+    jednotkova_cena_bez_dph = float(request.form.get('jednotkova_cena_bez_dph', 0) or 0)
+    sadzba_dph = request.form.get('sadzba_dph', '23').strip()
+
+    if not nazov or not typ_dokladu:
+        flash('Vyplňte názov šablóny a typ dokladu!', 'warning')
+    else:
+        ok, chyba = pridat_global_sablonu(nazov, typ_dokladu, popis, nazov_polozky, poznamka, mnozstvo, jednotka, jednotkova_cena_bez_dph, sadzba_dph)
+        if ok:
+            flash('Globálna šablóna bola pridaná!', 'success')
+        else:
+            flash(chyba or 'Chyba pri pridávaní šablóny.', 'danger')
+    return redirect(url_for('global_sablony_list'))
+
+
+@app.route('/global-sablony/upravit/<int:id>', methods=['POST'])
+def global_sablony_upravit(id):
+    """Upraví globálnu šablónu v hlavnej DB."""
+    set_db_path(DEFAULT_DB_PATH)
+    nazov = request.form.get('nazov', '').strip()
+    typ_dokladu = request.form.get('typ_dokladu', '').strip()
+    popis = request.form.get('popis', '').strip()
+    nazov_polozky = request.form.get('nazov_polozky', '').strip()
+    poznamka = request.form.get('poznamka', '').strip()
+    mnozstvo = float(request.form.get('mnozstvo', 1) or 1)
+    jednotka = request.form.get('jednotka', 'ks').strip()
+    jednotkova_cena_bez_dph = float(request.form.get('jednotkova_cena_bez_dph', 0) or 0)
+    sadzba_dph = request.form.get('sadzba_dph', '23').strip()
+
+    if not nazov or not typ_dokladu:
+        flash('Vyplňte názov šablóny a typ dokladu!', 'warning')
+    else:
+        ok, chyba = upravit_global_sablonu(id, nazov, typ_dokladu, popis, nazov_polozky, poznamka, mnozstvo, jednotka, jednotkova_cena_bez_dph, sadzba_dph)
+        if ok:
+            flash('Globálna šablóna bola upravená!', 'success')
+        else:
+            flash(chyba or 'Chyba pri úprave šablóny.', 'danger')
+    return redirect(url_for('global_sablony_list'))
+
+
+@app.route('/global-sablony/zmazat/<int:id>')
+def global_sablony_zmazat(id):
+    """Zmaže globálnu šablónu z hlavnej DB."""
+    set_db_path(DEFAULT_DB_PATH)
+    zmazat_global_sablonu(id)
+    flash('Globálna šablóna bola zmazaná!', 'success')
+    return redirect(url_for('global_sablony_list'))
+
+
 # ==================== SYSTEM CATALOG ====================
 
 @app.route('/system-catalog')
 def system_catalog():
     """Zoznam systémových katalógov."""
+    set_db_path(DEFAULT_DB_PATH)
     kategoria = request.args.get('kategoria')
     items = get_system_catalog(kategoria)
     # Group by kategoria
@@ -1815,7 +1903,50 @@ def system_catalog():
         if kat not in groups:
             groups[kat] = []
         groups[kat].append(dict(item))
-    return render_template('system_catalog.html', groups=groups, aktualna_kategoria=kategoria)
+    # API kľúče
+    api_kluce = {}
+    try:
+        db = get_db()
+        apilayer = db.execute("SELECT hodnota FROM system_catalog WHERE kategoria = 'api_kluc' AND kod = 'apilayer'").fetchone()
+        ibanapi = db.execute("SELECT hodnota FROM system_catalog WHERE kategoria = 'api_kluc' AND kod = 'ibanapi'").fetchone()
+        db.close()
+        api_kluce = {
+            'apilayer': apilayer['hodnota'] if apilayer else '',
+            'ibanapi': ibanapi['hodnota'] if ibanapi else ''
+        }
+    except:
+        pass
+    # Globálne šablóny a jednotky (pre dropdown)
+    sablony_list = get_global_sablony()
+    jednotky_list = get_jednotky()
+    return render_template('system_catalog.html', groups=groups, aktualna_kategoria=kategoria, api_kluce=api_kluce, sablony=sablony_list, jednotky=jednotky_list)
+
+
+@app.route('/system-catalog/api-kluce', methods=['POST'])
+def ulozit_api_kluce():
+    """Uloží API kľúče do system_catalog."""
+    set_db_path(DEFAULT_DB_PATH)
+    apilayer = request.form.get('apilayer_key', '').strip()
+    ibanapi = request.form.get('ibanapi_key', '').strip()
+    db = get_db()
+    # Ulož alebo aktualizuj API Layer kľúč
+    if apilayer:
+        db.execute('''
+            INSERT INTO system_catalog (kategoria, kod, nazov, hodnota, popis, je_aktivny)
+            VALUES ('api_kluc', 'apilayer', 'API Layer Key', ?, 'API kľúč pre bank_data API', 1)
+            ON CONFLICT(kategoria, kod) DO UPDATE SET hodnota = excluded.hodnota
+        ''', (apilayer,))
+    # Ulož alebo aktualizuj IBAN API kľúč
+    if ibanapi:
+        db.execute('''
+            INSERT INTO system_catalog (kategoria, kod, nazov, hodnota, popis, je_aktivny)
+            VALUES ('api_kluc', 'ibanapi', 'IBAN API Key', ?, 'API kľúč pre IBAN API', 1)
+            ON CONFLICT(kategoria, kod) DO UPDATE SET hodnota = excluded.hodnota
+        ''', (ibanapi,))
+    db.commit()
+    db.close()
+    flash('API kľúče boli uložené.', 'success')
+    return redirect(url_for('system_catalog'))
 
 @app.route('/system-catalog/upravit/<int:id>', methods=['POST'])
 def upravit_system_catalog(id):
@@ -1851,31 +1982,165 @@ def api_typy_dokladov(typ):
     return jsonify([dict(i) for i in items])
 
 
+@app.route('/api/nacitat-banky', methods=['POST'])
+def api_nacitat_banky():
+    """Načíta aktuálny zoznam bánk z externých API alebo lokálneho zoznamu."""
+    import requests
+    set_db_path(DEFAULT_DB_PATH)
+    banky_nacitane = 0
+    chyby = []
+
+    # Načítaj API kľúče z databázy
+    db = get_db()
+    apilayer_row = db.execute("SELECT hodnota FROM system_catalog WHERE kategoria = 'api_kluc' AND kod = 'apilayer'").fetchone()
+    ibanapi_row = db.execute("SELECT hodnota FROM system_catalog WHERE kategoria = 'api_kluc' AND kod = 'ibanapi'").fetchone()
+    db.close()
+    apilayer_key = apilayer_row['hodnota'] if apilayer_row else ''
+    ibanapi_key = ibanapi_row['hodnota'] if ibanapi_row else ''
+
+    # Pokus 1: apilayer bank_data API
+    if apilayer_key:
+        try:
+            resp = requests.get(
+                'https://api.apilayer.com/bank_data/countries/SK',
+                headers={'apikey': apilayer_key},
+                timeout=10
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                banks = data.get('banks', [])
+                for b in banks:
+                    swift = b.get('swift', '')
+                    nazov = b.get('name', '')
+                    if swift and nazov:
+                        db = get_db()
+                        db.execute('''
+                            INSERT OR REPLACE INTO system_catalog
+                            (kategoria, kod, nazov, hodnota, popis, je_aktivny)
+                            VALUES (?, ?, ?, ?, ?, 1)
+                        ''', ('banka', swift, nazov, swift, nazov))
+                        db.commit()
+                        db.close()
+                        banky_nacitane += 1
+        except Exception as e:
+            chyby.append(f'API Layer: {str(e)}')
+
+    # Pokus 2: ibanapi.com
+    if banky_nacitane == 0 and ibanapi_key:
+        try:
+            resp = requests.get(
+                'https://api.ibanapi.com/v1/banks/SK',
+                headers={'Authorization': f'Bearer {ibanapi_key}'},
+                timeout=10
+            )
+            if resp.status_code == 200:
+                data = resp.json()
+                banks = data.get('data', [])
+                for b in banks:
+                    swift = b.get('swift', '')
+                    nazov = b.get('bank_name', '')
+                    if swift and nazov:
+                        db = get_db()
+                        db.execute('''
+                            INSERT OR REPLACE INTO system_catalog
+                            (kategoria, kod, nazov, hodnota, popis, je_aktivny)
+                            VALUES (?, ?, ?, ?, ?, 1)
+                        ''', ('banka', swift, nazov, swift, nazov))
+                        db.commit()
+                        db.close()
+                        banky_nacitane += 1
+        except Exception as e:
+            chyby.append(f'IBAN API: {str(e)}')
+
+    # Fallback: lokálny zoznam z migrácie (už je v DB)
+    if banky_nacitane == 0:
+        db = get_db()
+        count = db.execute("SELECT COUNT(*) FROM system_catalog WHERE kategoria = 'banka'").fetchone()[0]
+        db.close()
+        if count == 0:
+            from migrations import migrate
+            migrate(DEFAULT_DB_PATH)
+            return jsonify({'success': True, 'message': 'Lokálny zoznam bánk bol inicializovaný z migrácie.'})
+        if not apilayer_key and not ibanapi_key:
+            return jsonify({'success': True, 'message': f'Použitý lokálny zoznam ({count} bánk). API kľúče nie sú nastavené — pridajte ich v časti "API Kľúče" nižšie.'})
+        return jsonify({'success': True, 'message': f'Použitý lokálny zoznam ({count} bánk). API volanie zlyhalo: {"; ".join(chyby)}'})
+
+    return jsonify({'success': True, 'message': f'Načítaných {banky_nacitane} bánk.'})
+
+
 # ==================== AGENDY (FIRMY) ====================
 
 @app.route('/agendy')
 def agendy():
-    """Zoznam všetkých agend."""
-    # Najprv načítať z hlavnej databázy
+    """Nastavenia agendy — všetko na jednej stránke s taby."""
+    # Agendy z hlavnej DB
     set_db_path(DEFAULT_DB_PATH)
     agendy_list = get_agendy()
     aktivna = get_aktivna_agenda()
-    return render_template('agendy.html', agendy=agendy_list, aktivna=aktivna)
+
+    # Zobrazenie z hlavnej DB
+    zobrazenie = get_zobrazenie()
+
+    # Typy dokladov z aktuálnej agendy
+    typ_prijem = get_agenda_typy_dokladov('prijem')
+    typ_vydavok = get_agenda_typy_dokladov('vydavok')
+
+    # Číselné rady z aktuálnej agendy
+    db = get_db()
+    ciselniky_data = db.execute('SELECT * FROM ciselniky_dokladov ORDER BY typ_dokladu, nazov').fetchall()
+    db.close()
+
+    return render_template('agendy.html',
+                           agendy=agendy_list, aktivna=aktivna,
+                           zobrazenie=zobrazenie,
+                           typ_prijem=typ_prijem, typ_vydavok=typ_vydavok,
+                           ciselniky=ciselniky_data)
+
+
+# Staré routes — presmerujú na /agendy
+@app.route('/agenda-typy-dokladov')
+def agenda_typy_dokladov():
+    return redirect(url_for('agendy'))
+
+
+@app.route('/nastavenia-zobrazenia')
+def nastavenia_zobrazenia_redirect():
+    return redirect(url_for('agendy'))
 
 
 @app.route('/vytvorit-agendu', methods=['POST'])
 def vytvorit_agendu_route():
     nazov = request.form.get('nazov', '').strip()
     poznamka = request.form.get('poznamka', '').strip()
+    subor = request.form.get('subor', '').strip() or None
+    cesta_k_db = request.form.get('cesta_k_db', '').strip() or None
     if not nazov:
         flash('Zadajte názov agendy!', 'warning')
         return redirect(url_for('agendy'))
 
-    cesta, chyba = vytvorit_agendu(nazov, poznamka)
+    cesta, chyba = vytvorit_agendu(nazov, poznamka, subor=subor, cesta_k_db=cesta_k_db)
     if chyba:
         flash(chyba, 'danger')
     else:
         flash(f'Agenda "{nazov}" bola vytvorená a aktivovaná!', 'success')
+    return redirect(url_for('agendy'))
+
+
+@app.route('/upravit-agendu', methods=['POST'])
+def upravit_agendu_route():
+    subor = request.form.get('subor', '').strip()
+    nazov = request.form.get('nazov', '').strip()
+    poznamka = request.form.get('poznamka', '').strip()
+    novy_subor = request.form.get('novy_subor', '').strip() or None
+    if not subor:
+        flash('Nebola zvolená agenda na úpravu!', 'warning')
+        return redirect(url_for('agendy'))
+
+    uspech, chyba = upravit_agendu(subor, nazov=nazov or None, poznamka=poznamka or None, novy_subor=novy_subor)
+    if uspech:
+        flash('Agenda bola upravená!', 'success')
+    else:
+        flash(chyba or 'Chyba pri úprave agendy', 'danger')
     return redirect(url_for('agendy'))
 
 
@@ -1942,6 +2207,81 @@ def resetnut_agendu_route(subor):
         flash('Agenda bola resetnutá! Všetky doklady boli vymazané.', 'warning')
     else:
         flash(chyba or 'Chyba pri resetovaní agendy', 'danger')
+    return redirect(url_for('agendy'))
+
+
+# ==================== EXCEL EXPORT/IMPORT AGENDY ====================
+
+@app.route('/exportovat-agendu-excel/<subor>')
+def exportovat_agendu_excel_route(subor):
+    """Exportuje agendu do Excel súboru na stiahnutie."""
+    agendy_dir = get_agendy_dir()
+    db_path = os.path.join(agendy_dir, subor)
+    if not os.path.exists(db_path):
+        flash('Súbor agendy neexistuje', 'danger')
+        return redirect(url_for('agendy'))
+
+    try:
+        # Získaj aktuálny názov agendy z hlavnej databázy
+        set_db_path(DEFAULT_DB_PATH)
+        db = get_db()
+        agenda = db.execute('SELECT nazov FROM agendy WHERE subor = ?', (subor,)).fetchone()
+        db.close()
+        nazov_agendy = agenda['nazov'] if agenda else None
+
+        output_path = export_agenda_to_excel(db_path, nazov_agendy=nazov_agendy)
+        nazov = os.path.basename(output_path)
+        return send_file(output_path, as_attachment=True, download_name=nazov)
+    except Exception as e:
+        flash(f'Chyba pri exporte do Excelu: {str(e)}', 'danger')
+        return redirect(url_for('agendy'))
+
+
+@app.route('/importovat-agendu-excel', methods=['POST'])
+def importovat_agendu_excel_route():
+    """Importuje agendu z Excel súboru."""
+    if 'soubor' not in request.files:
+        flash('Nebol vybraný žiadny súbor!', 'warning')
+        return redirect(url_for('agendy'))
+    file = request.files['soubor']
+    if file.filename == '':
+        flash('Nebol vybraný žiadny súbor!', 'warning')
+        return redirect(url_for('agendy'))
+
+    # Uložiť dočasne
+    temp_path = os.path.join(get_agendy_dir(), 'temp_import_excel.xlsx')
+    file.save(temp_path)
+
+    # Získať aktívnu agendu alebo vytvoriť novú
+    subor = request.form.get('subor', '').strip()
+    mode = request.form.get('mode', 'merge')
+
+    if not subor:
+        flash('Nebola zvolená agenda pre import!', 'warning')
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
+        return redirect(url_for('agendy'))
+
+    agendy_dir = get_agendy_dir()
+    db_path = os.path.join(agendy_dir, subor)
+    if not os.path.exists(db_path):
+        flash('Agenda neexistuje!', 'danger')
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
+        return redirect(url_for('agendy'))
+
+    try:
+        success, message, stats = import_agenda_from_excel(temp_path, db_path, mode=mode)
+        if success:
+            flash(f'Import úspešný! {message}', 'success')
+        else:
+            flash(f'Import zlyhal: {message}', 'danger')
+    except Exception as e:
+        flash(f'Chyba pri importe z Excelu: {str(e)}', 'danger')
+    finally:
+        if os.path.exists(temp_path):
+            os.remove(temp_path)
+
     return redirect(url_for('agendy'))
 
 
@@ -2065,7 +2405,50 @@ def api_ciselniky_pre_typ(typ):
     return jsonify([dict(row) for row in ciselniky])
 
 
-# ==================== ADRESÁR ====================
+# ==================== AGENDA-ŠPECIFICKÉ TYPY DOKLADOV ====================
+
+# Staré routes — presmerujú na /agendy (teraz všetko na jednej stránke)
+@app.route('/agenda-typy-dokladov')
+def agenda_typy_dokladov_redirect():
+    return redirect(url_for('agendy'))
+
+
+@app.route('/agenda-typy-dokladov/pridat', methods=['POST'])
+def pridat_agenda_typ_dokladu_route():
+    """Pridá agenda-špecifický typ dokladu."""
+    typ = request.form.get('typ')
+    kod = request.form.get('kod', '').strip()
+    nazov = request.form.get('nazov', '').strip()
+    popis = request.form.get('popis', '').strip()
+    if not kod or not nazov:
+        flash('Kód a názov sú povinné.', 'danger')
+        return redirect(url_for('agendy'))
+    pridat_agenda_typ_dokladu(typ, kod, nazov, popis)
+    flash(f'Typ dokladu "{nazov}" bol pridaný.', 'success')
+    return redirect(url_for('agendy'))
+
+
+@app.route('/agenda-typy-dokladov/upravit/<int:id>', methods=['POST'])
+def upravit_agenda_typ_dokladu_route(id):
+    """Upraví agenda-špecifický typ dokladu."""
+    nazov = request.form.get('nazov', '').strip()
+    popis = request.form.get('popis', '').strip()
+    je_aktivny = request.form.get('je_aktivny')
+    if not nazov:
+        flash('Názov je povinný.', 'danger')
+        return redirect(url_for('agendy'))
+    upravit_agenda_typ_dokladu(id, nazov, popis, je_aktivny)
+    flash('Typ dokladu bol upravený.', 'success')
+    return redirect(url_for('agendy'))
+
+
+@app.route('/agenda-typy-dokladov/zmazat/<int:id>')
+def zmazat_agenda_typ_dokladu_route(id):
+    """Zmaže agenda-špecifický typ dokladu."""
+    zmazat_agenda_typ_dokladu(id)
+    flash('Typ dokladu bol zmazaný.', 'danger')
+    return redirect(url_for('agendy'))
+
 
 @app.route('/adresar')
 def adresar():
@@ -2153,8 +2536,8 @@ def pridat_kontakt():
         for i in range(int(request.form.get('banka_count', '0'))):
             db.execute('''
                 INSERT INTO adresar_bankove_ucty
-                (kontakt_id, nazov, banka, bankovy_ucet, iban, swift, mena, je_aktivny)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                (kontakt_id, nazov, banka, bankovy_ucet, iban, swift, cislo_uctu, predcislie, mena, je_aktivny)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', (
                 kontakt_id,
                 request.form.get(f'banka_nazov_{i}', ''),
@@ -2162,6 +2545,8 @@ def pridat_kontakt():
                 request.form.get(f'banka_ucet_{i}', ''),
                 request.form.get(f'banka_iban_{i}', ''),
                 request.form.get(f'banka_swift_{i}', ''),
+                request.form.get(f'banka_cislo_uctu_{i}', ''),
+                request.form.get(f'banka_predcislie_{i}', ''),
                 request.form.get(f'banka_mena_{i}', 'EUR'),
                 1 if request.form.get(f'banka_aktivny_{i}') else 0
             ))
@@ -2250,8 +2635,8 @@ def upravit_kontakt(id):
         for i in range(int(request.form.get('banka_count', '0'))):
             db.execute('''
                 INSERT INTO adresar_bankove_ucty
-                (kontakt_id, nazov, banka, bankovy_ucet, iban, swift, mena, je_aktivny)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+                (kontakt_id, nazov, banka, bankovy_ucet, iban, swift, cislo_uctu, predcislie, mena, je_aktivny)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ''', (
                 id,
                 request.form.get(f'banka_nazov_{i}', ''),
@@ -2259,6 +2644,8 @@ def upravit_kontakt(id):
                 request.form.get(f'banka_ucet_{i}', ''),
                 request.form.get(f'banka_iban_{i}', ''),
                 request.form.get(f'banka_swift_{i}', ''),
+                request.form.get(f'banka_cislo_uctu_{i}', ''),
+                request.form.get(f'banka_predcislie_{i}', ''),
                 request.form.get(f'banka_mena_{i}', 'EUR'),
                 1 if request.form.get(f'banka_aktivny_{i}') else 0
             ))
@@ -2312,6 +2699,152 @@ def detail_kontaktu(id):
     db.close()
     return render_template('detail_kontaktu.html', kontakt=kontakt, adresy=adresy,
                            kontakty=kontakty, banky=banky, poznamky=poznamky)
+
+
+# ==================== ADRESÁR - CRUD PRE ADRESY, KONTAKTY, BANKY, POZNÁMKY ====================
+
+@app.route('/detail-kontaktu/<int:id>/adresa/pridat', methods=['POST'])
+def pridat_adresu_route(id):
+    """Pridá doručovaciu adresu kontaktu."""
+    nazov = request.form.get('nazov', '').strip()
+    ulica = request.form.get('ulica', '').strip()
+    cislo = request.form.get('cislo', '').strip()
+    psc = request.form.get('psc', '').strip()
+    mesto = request.form.get('mesto', '').strip()
+    stat = request.form.get('stat', 'Slovensko').strip()
+    pridat_adresar_adresu(id, nazov, ulica, cislo, psc, mesto, stat)
+    flash('Adresa bola pridaná!', 'success')
+    return redirect(url_for('detail_kontaktu', id=id))
+
+
+@app.route('/detail-kontaktu/<int:kontakt_id>/adresa/<int:adresa_id>/upravit', methods=['POST'])
+def upravit_adresu_route(kontakt_id, adresa_id):
+    """Upraví doručovaciu adresu."""
+    nazov = request.form.get('nazov', '').strip()
+    ulica = request.form.get('ulica', '').strip()
+    cislo = request.form.get('cislo', '').strip()
+    psc = request.form.get('psc', '').strip()
+    mesto = request.form.get('mesto', '').strip()
+    stat = request.form.get('stat', 'Slovensko').strip()
+    je_aktivny = 1 if request.form.get('je_aktivny') else 0
+    upravit_adresar_adresu(adresa_id, nazov, ulica, cislo, psc, mesto, stat, je_aktivny)
+    flash('Adresa bola upravená!', 'success')
+    return redirect(url_for('detail_kontaktu', id=kontakt_id))
+
+
+@app.route('/detail-kontaktu/<int:kontakt_id>/adresa/<int:adresa_id>/zmazat')
+def zmazat_adresu_route(kontakt_id, adresa_id):
+    """Zmaže doručovaciu adresu."""
+    zmazat_adresar_adresu(adresa_id)
+    flash('Adresa bola zmazaná!', 'success')
+    return redirect(url_for('detail_kontaktu', id=kontakt_id))
+
+
+@app.route('/detail-kontaktu/<int:id>/kontakt/pridat', methods=['POST'])
+def pridat_kontakt_osobu_route(id):
+    """Pridá kontaktnú osobu."""
+    meno = request.form.get('meno', '').strip()
+    telefon = request.form.get('telefon', '').strip()
+    email = request.form.get('email', '').strip()
+    poznamka = request.form.get('poznamka', '').strip()
+    if not meno:
+        flash('Meno je povinné!', 'warning')
+    else:
+        pridat_adresar_kontakt(id, meno, telefon, email, poznamka)
+        flash('Kontaktná osoba bola pridaná!', 'success')
+    return redirect(url_for('detail_kontaktu', id=id))
+
+
+@app.route('/detail-kontaktu/<int:kontakt_id>/kontakt/<int:kontakt_osoba_id>/upravit', methods=['POST'])
+def upravit_kontakt_osobu_route(kontakt_id, kontakt_osoba_id):
+    """Upraví kontaktnú osobu."""
+    meno = request.form.get('meno', '').strip()
+    telefon = request.form.get('telefon', '').strip()
+    email = request.form.get('email', '').strip()
+    poznamka = request.form.get('poznamka', '').strip()
+    je_aktivny = 1 if request.form.get('je_aktivny') else 0
+    upravit_adresar_kontakt(kontakt_osoba_id, meno, telefon, email, poznamka, je_aktivny)
+    flash('Kontaktná osoba bola upravená!', 'success')
+    return redirect(url_for('detail_kontaktu', id=kontakt_id))
+
+
+@app.route('/detail-kontaktu/<int:kontakt_id>/kontakt/<int:kontakt_osoba_id>/zmazat')
+def zmazat_kontakt_osobu_route(kontakt_id, kontakt_osoba_id):
+    """Zmaže kontaktnú osobu."""
+    zmazat_adresar_kontakt(kontakt_osoba_id)
+    flash('Kontaktná osoba bola zmazaná!', 'success')
+    return redirect(url_for('detail_kontaktu', id=kontakt_id))
+
+
+@app.route('/detail-kontaktu/<int:id>/bankovy-ucet/pridat', methods=['POST'])
+def pridat_bankovy_ucet_route(id):
+    """Pridá bankový účet kontaktu."""
+    nazov = request.form.get('nazov', '').strip()
+    banka = request.form.get('banka', '').strip()
+    predcislie = request.form.get('predcislie', '').strip()
+    cislo_uctu = request.form.get('cislo_uctu', '').strip()
+    bankovy_ucet = request.form.get('bankovy_ucet', '').strip()
+    iban = request.form.get('iban', '').strip()
+    swift = request.form.get('swift', '').strip()
+    mena = request.form.get('mena', 'EUR').strip()
+    pridat_adresar_bankovy_ucet(id, nazov, banka, predcislie, cislo_uctu, bankovy_ucet, iban, swift, mena)
+    flash('Bankový účet bol pridaný!', 'success')
+    return redirect(url_for('detail_kontaktu', id=id))
+
+
+@app.route('/detail-kontaktu/<int:kontakt_id>/bankovy-ucet/<int:ucet_id>/upravit', methods=['POST'])
+def upravit_bankovy_ucet_route(kontakt_id, ucet_id):
+    """Upraví bankový účet."""
+    nazov = request.form.get('nazov', '').strip()
+    banka = request.form.get('banka', '').strip()
+    predcislie = request.form.get('predcislie', '').strip()
+    cislo_uctu = request.form.get('cislo_uctu', '').strip()
+    bankovy_ucet = request.form.get('bankovy_ucet', '').strip()
+    iban = request.form.get('iban', '').strip()
+    swift = request.form.get('swift', '').strip()
+    mena = request.form.get('mena', 'EUR').strip()
+    je_aktivny = 1 if request.form.get('je_aktivny') else 0
+    upravit_adresar_bankovy_ucet(ucet_id, nazov, banka, predcislie, cislo_uctu, bankovy_ucet, iban, swift, mena, je_aktivny)
+    flash('Bankový účet bol upravený!', 'success')
+    return redirect(url_for('detail_kontaktu', id=kontakt_id))
+
+
+@app.route('/detail-kontaktu/<int:kontakt_id>/bankovy-ucet/<int:ucet_id>/zmazat')
+def zmazat_bankovy_ucet_route(kontakt_id, ucet_id):
+    """Zmaže bankový účet."""
+    zmazat_adresar_bankovy_ucet(ucet_id)
+    flash('Bankový účet bol zmazaný!', 'success')
+    return redirect(url_for('detail_kontaktu', id=kontakt_id))
+
+
+@app.route('/detail-kontaktu/<int:id>/poznamka/pridat', methods=['POST'])
+def pridat_poznamku_route(id):
+    """Pridá poznámku kontaktu."""
+    text = request.form.get('text', '').strip()
+    if text:
+        pridat_adresar_poznamku(id, text)
+        flash('Poznámka bola pridaná!', 'success')
+    else:
+        flash('Text poznámky je povinný!', 'warning')
+    return redirect(url_for('detail_kontaktu', id=id))
+
+
+@app.route('/detail-kontaktu/<int:kontakt_id>/poznamka/<int:poznamka_id>/upravit', methods=['POST'])
+def upravit_poznamku_route(kontakt_id, poznamka_id):
+    """Upraví poznámku."""
+    text = request.form.get('text', '').strip()
+    je_aktivny = 1 if request.form.get('je_aktivny') else 0
+    upravit_adresar_poznamku(poznamka_id, text, je_aktivny)
+    flash('Poznámka bola upravená!', 'success')
+    return redirect(url_for('detail_kontaktu', id=kontakt_id))
+
+
+@app.route('/detail-kontaktu/<int:kontakt_id>/poznamka/<int:poznamka_id>/zmazat')
+def zmazat_poznamku_route(kontakt_id, poznamka_id):
+    """Zmaže poznámku."""
+    zmazat_adresar_poznamku(poznamka_id)
+    flash('Poznámka bola zmazaná!', 'success')
+    return redirect(url_for('detail_kontaktu', id=kontakt_id))
 
 
 # ==================== VYHĽADÁVANIE FIRMY V ORSR ====================

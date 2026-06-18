@@ -8,6 +8,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}Daňová evidencia{% endblock %}</title>
+    <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='favicon.svg') }}">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css">
@@ -144,28 +145,13 @@
                             </li>
                             <li>
                                 <a class="dropdown-item {% if request.endpoint == 'agendy' %}active{% endif %}" href="{{ url_for('agendy') }}">
-                                    <i class="bi bi-briefcase"></i> Agendy
+                                    <i class="bi bi-briefcase"></i> Nastavenia agendy
                                 </a>
                             </li>
                             <li><hr class="dropdown-divider"></li>
                             <li>
-                                <a class="dropdown-item {% if request.endpoint in ['ciselniky', 'pridat_ciselnik', 'upravit_ciselnik'] %}active{% endif %}" href="{{ url_for('ciselniky') }}">
-                                    <i class="bi bi-list-ol"></i> Číselníky
-                                </a>
-                            </li>
-                            <li>
-                                <a class="dropdown-item {% if request.endpoint == 'jednotky_list' %}active{% endif %}" href="{{ url_for('jednotky_list') }}">
-                                    <i class="bi bi-rulers"></i> Jednotky
-                                </a>
-                            </li>
-                            <li>
-                                <a class="dropdown-item {% if request.endpoint == 'sablony_list' %}active{% endif %}" href="{{ url_for('sablony_list') }}">
-                                    <i class="bi bi-file-earmark-text"></i> Šablóny
-                                </a>
-                            </li>
-                            <li>
                                 <a class="dropdown-item {% if request.endpoint == 'system_catalog' %}active{% endif %}" href="{{ url_for('system_catalog') }}">
-                                    <i class="bi bi-gear"></i> Systémové katalógy
+                                    <i class="bi bi-globe"></i> Globálne nastavenia
                                 </a>
                             </li>
                             <li>

@@ -1,127 +1,569 @@
 {% extends "base.html" %}
 
-{% block title %}Systémové katalógy - Daňová evidencia{% endblock %}
+{% block title %}Globálne nastavenia - Daňová evidencia{% endblock %}
 
 {% block content %}
 <div class="row justify-content-center">
     <div class="col-lg-10">
         <div class="card">
-            <div class="card-header bg-primary text-white">
-                <h4 class="mb-0"><i class="bi bi-gear"></i> Systémové katalógy</h4>
+            <div class="card-header bg-primary text-white d-flex justify-content-between align-items-center">
+                <h4 class="mb-0"><i class="bi bi-globe"></i> Globálne nastavenia</h4>
+                <button type="button" class="btn btn-light btn-sm" onclick="nacitatBankyApi()">
+                    <i class="bi bi-cloud-download"></i> Načítať banky z API
+                </button>
             </div>
             <div class="card-body">
-                <p class="text-muted">
-                    Tu môžete upravovať systémové hodnoty ako DPH sadzby, právne limity a typy dokladov.
-                    Zmeny sa prejavia okamžite v celej aplikácii.
-                </p>
-
-                {% for kategoria, items in groups.items() %}
-                <div class="mb-4">
-                    <h5 class="border-bottom pb-2 mb-3 text-primary">
-                        {% if kategoria == 'dph_sadzba' %}
-                            <i class="bi bi-percent"></i> DPH Sadzby
-                        {% elif kategoria == 'limit' %}
-                            <i class="bi bi-shield-check"></i> Právne limity
-                        {% elif kategoria == 'typ_dokladu_prijem' %}
-                            <i class="bi bi-file-earmark-arrow-up"></i> Typy dokladov - Príjem
-                        {% elif kategoria == 'typ_dokladu_vydavok' %}
-                            <i class="bi bi-file-earmark-arrow-down"></i> Typy dokladov - Výdavok
-                        {% else %}
-                            <i class="bi bi-folder"></i> {{ kategoria }}
-                        {% endif %}
-                    </h5>
-                    <div class="table-responsive">
-                        <table class="table table-bordered table-sm">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>Kód</th>
-                                    <th>Názov</th>
-                                    <th>Hodnota</th>
-                                    <th>Popis</th>
-                                    <th>Platnosť od</th>
-                                    <th>Status</th>
-                                    <th style="width:8%"></th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for item in items %}
-                                <tr>
-                                    <td><code>{{ item.kod }}</code></td>
-                                    <td>{{ item.nazov }}</td>
-                                    <td>
-                                        {% if item.hodnota_cislo is not none %}
-                                            {{ item.hodnota_cislo }}{% if item.kategoria == 'dph_sadzba' %}%{% endif %}
-                                        {% else %}
-                                            {{ item.hodnota or '-' }}
-                                        {% endif %}
-                                    </td>
-                                    <td><small class="text-muted">{{ item.popis or '' }}</small></td>
-                                    <td>{{ format_datum(item.platnost_od) or '-' }}</td>
-                                    <td>
-                                        {% if item.je_aktivny %}
-                                            <span class="badge bg-success">Aktívny</span>
-                                        {% else %}
-                                            <span class="badge bg-secondary">Neaktívny</span>
-                                        {% endif %}
-                                    </td>
-                                    <td class="text-center">
-                                        <button type="button" class="btn btn-sm btn-outline-primary" 
-                                                onclick="document.getElementById('editModal{{ item.id }}').style.display='block'; document.getElementById('editModal{{ item.id }}').classList.add('show');"
-                                                title="Upraviť">
-                                            <i class="bi bi-pencil"></i>
-                                        </button>
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
+                <div class="alert alert-info mb-3">
+                    <i class="bi bi-info-circle"></i>
+                    <strong>Globálne nastavenia</strong> platia pre <strong>všetky agendy</strong>.
+                    Ak potrebujete nastavenia len pre konkrétnu agendu, upravte ich v <a href="{{ url_for('agendy') }}">Nastaveniach agendy</a>.
                 </div>
 
-                <!-- Edit Modals -->
-                {% for item in items %}
-                <div class="modal" id="editModal{{ item.id }}" tabindex="-1" data-bs-backdrop="static">
-                    <div class="modal-dialog">
-                        <div class="modal-content">
-                            <div class="modal-header bg-primary text-white">
-                                <h5 class="modal-title">Upraviť: {{ item.nazov }}</h5>
-                                <button type="button" class="btn-close btn-close-white" onclick="document.getElementById('editModal{{ item.id }}').style.display='none'; document.getElementById('editModal{{ item.id }}').classList.remove('show');"></button>
+                <!-- Tabs -->
+                <ul class="nav nav-tabs mb-3" id="catalogTabs" role="tablist">
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link active" id="dph-tab" data-bs-toggle="tab" data-bs-target="#dph_sadzba" type="button" role="tab">
+                            <i class="bi bi-percent"></i> DPH Sadzby
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="limity-tab" data-bs-toggle="tab" data-bs-target="#limit" type="button" role="tab">
+                            <i class="bi bi-shield-check"></i> Právne limity
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="typy-tab" data-bs-toggle="tab" data-bs-target="#typy_dokladov" type="button" role="tab">
+                            <i class="bi bi-file-earmark-text"></i> Typy dokladov
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="banky-tab" data-bs-toggle="tab" data-bs-target="#banka" type="button" role="tab">
+                            <i class="bi bi-bank"></i> Banky
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="sablony-tab" data-bs-toggle="tab" data-bs-target="#sablony" type="button" role="tab">
+                            <i class="bi bi-file-earmark-medical"></i> Šablóny
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="jednotky-tab" data-bs-toggle="tab" data-bs-target="#jednotky" type="button" role="tab">
+                            <i class="bi bi-rulers"></i> Jednotky
+                        </button>
+                    </li>
+                    <li class="nav-item" role="presentation">
+                        <button class="nav-link" id="cisleniky-tab" data-bs-toggle="tab" data-bs-target="#cisleniky" type="button" role="tab">
+                            <i class="bi bi-list-ol"></i> Číselné rady
+                        </button>
+                    </li>
+                </ul>
+
+                <div class="tab-content" id="catalogTabsContent">
+                    {% for kategoria, items in groups.items() %}
+                    <div class="tab-pane fade {% if kategoria == 'dph_sadzba' %}show active{% endif %}" id="{{ kategoria }}" role="tabpanel">
+                        <div class="table-responsive">
+                            <table class="table table-bordered table-sm">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Kód</th>
+                                        <th>Názov</th>
+                                        <th>Hodnota</th>
+                                        <th>Popis</th>
+                                        <th>Platnosť od</th>
+                                        <th>Status</th>
+                                        <th style="width:8%"></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for item in items %}
+                                    <tr>
+                                        <td><code>{{ item.kod }}</code></td>
+                                        <td>{{ item.nazov }}</td>
+                                        <td>
+                                            {% if item.hodnota_cislo is not none %}
+                                                {{ item.hodnota_cislo }}{% if item.kategoria == 'dph_sadzba' %}%{% endif %}
+                                            {% else %}
+                                                {{ item.hodnota or '-' }}
+                                            {% endif %}
+                                        </td>
+                                        <td><small class="text-muted">{{ item.popis or '' }}</small></td>
+                                        <td>{{ format_datum(item.platnost_od) or '-' }}</td>
+                                        <td>
+                                            {% if item.je_aktivny %}
+                                            <span class="badge bg-success">Aktívny</span>
+                                            {% else %}
+                                            <span class="badge bg-secondary">Neaktívny</span>
+                                            {% endif %}
+                                        </td>
+                                        <td class="text-center">
+                                            <button type="button" class="btn btn-sm btn-outline-primary"
+                                                    data-bs-toggle="modal" data-bs-target="#editModal{{ item.id }}"
+                                                    title="Upraviť">
+                                                <i class="bi bi-pencil"></i>
+                                            </button>
+                                        </td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {% if kategoria == 'banka' %}
+                        <!-- API Kľúče — zobraziť len v tabe Banky -->
+                        <hr class="my-4">
+                        <div class="card border-info">
+                            <div class="card-header bg-info text-white">
+                                <h5 class="mb-0"><i class="bi bi-key"></i> API Kľúče pre načítanie bánk</h5>
                             </div>
-                            <form method="post" action="{{ url_for('upravit_system_catalog', id=item.id) }}">
-                                <div class="modal-body">
-                                    <div class="mb-3">
-                                        <label class="form-label">Názov</label>
-                                        <input type="text" name="nazov" class="form-control" value="{{ item.nazov }}" required>
+                            <div class="card-body">
+                                <form method="post" action="{{ url_for('ulozit_api_kluce') }}">
+                                    <div class="row">
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label"><i class="bi bi-cloud"></i> API Layer API Key</label>
+                                            <input type="password" name="apilayer_key" class="form-control"
+                                                   value="{{ api_kluce.apilayer or '' }}"
+                                                   placeholder="Zadajte váš API Layer kľúč">
+                                            <div class="form-text">
+                                                <a href="https://apilayer.com/marketplace/bank_data-api" target="_blank">
+                                                    <i class="bi bi-box-arrow-up-right"></i> Získať API Layer kľúč
+                                                </a>
+                                                — Registrácia je zdarma (100 volaní/mesiac)
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6 mb-3">
+                                            <label class="form-label"><i class="bi bi-bank"></i> IBAN API Key</label>
+                                            <input type="password" name="ibanapi_key" class="form-control"
+                                                   value="{{ api_kluce.ibanapi or '' }}"
+                                                   placeholder="Zadajte váš IBAN API kľúč">
+                                            <div class="form-text">
+                                                <a href="https://ibanapi.com/get-api" target="_blank">
+                                                    <i class="bi bi-box-arrow-up-right"></i> Získať IBAN API kľúč
+                                                </a>
+                                                — Registrácia je zdarma (50 volaní/deň)
+                                            </div>
+                                        </div>
                                     </div>
-                                    {% if item.hodnota_cislo is not none %}
-                                    <div class="mb-3">
-                                        <label class="form-label">Hodnota (číslo)</label>
-                                        <input type="number" name="hodnota_cislo" class="form-control" 
-                                               value="{{ item.hodnota_cislo }}" step="0.01">
+                                    <div class="d-flex gap-2">
+                                        <button type="submit" class="btn btn-info">
+                                            <i class="bi bi-save"></i> Uložiť API kľúče
+                                        </button>
+                                        <button type="button" class="btn btn-outline-success" onclick="nacitatBankyApi()">
+                                            <i class="bi bi-cloud-download"></i> Načítať banky z API
+                                        </button>
                                     </div>
-                                    {% endif %}
-                                    <div class="mb-3">
-                                        <label class="form-label">Popis</label>
-                                        <textarea name="popis" class="form-control" rows="2">{{ item.popis or '' }}</textarea>
-                                    </div>
-                                    <div class="mb-3 form-check">
-                                        <input type="checkbox" name="je_aktivny" class="form-check-input" id="aktivny{{ item.id }}" 
-                                               {% if item.je_aktivny %}checked{% endif %}>
-                                        <label class="form-check-label" for="aktivny{{ item.id }}">Aktívny</label>
-                                    </div>
+                                </form>
+
+                                <hr class="my-4">
+                                <h6 class="text-muted"><i class="bi bi-info-circle"></i> Ako získať API kľúče:</h6>
+                                <ol class="text-muted small">
+                                    <li>
+                                        <strong>API Layer:</strong> Navštívte
+                                        <a href="https://apilayer.com/marketplace/bank_data-api" target="_blank">apilayer.com/marketplace/bank_data-api</a>,
+                                        zaregistrujte sa (zdarma), prejdite do <em>Dashboard → API Keys</em> a skopírujte kľúč.
+                                    </li>
+                                    <li>
+                                        <strong>IBAN API:</strong> Navštívte
+                                        <a href="https://ibanapi.com/get-api" target="_blank">ibanapi.com/get-api</a>,
+                                        zaregistrujte sa (zdarma), vytvorte nový API kľúč v <em>My Account → API Keys</em>.
+                                    </li>
+                                    <li>
+                                        Kľúče sa ukladajú lokálne do databázy (nie sú zdieľané). Bez kľúčov sa použije
+                                        <strong>lokálny zoznam 29 slovenských bánk</strong>.
+                                    </li>
+                                </ol>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                    {% endfor %}
+
+                    <!-- Typy dokladov -->
+                    <div class="tab-pane fade" id="typy_dokladov" role="tabpanel">
+                        <ul class="nav nav-pills mb-3" id="typyDokladovSubtabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="typy-prijem-subtab" data-bs-toggle="pill" data-bs-target="#typy_dokladov_prijem" type="button" role="tab">
+                                    <i class="bi bi-file-earmark-arrow-up"></i> Príjem
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="typy-vydavok-subtab" data-bs-toggle="pill" data-bs-target="#typy_dokladov_vydavok" type="button" role="tab">
+                                    <i class="bi bi-file-earmark-arrow-down"></i> Výdavok
+                                </button>
+                            </li>
+                        </ul>
+                        <div class="tab-content" id="typyDokladovSubtabsContent">
+                            <div class="tab-pane fade show active" id="typy_dokladov_prijem" role="tabpanel">
+                                {% if groups.get('typ_dokladu_prijem') %}
+                                <div class="table-responsive">
+                                    <table class="table table-bordered table-sm">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>Kód</th>
+                                                <th>Názov</th>
+                                                <th>Hodnota</th>
+                                                <th>Popis</th>
+                                                <th>Platnosť od</th>
+                                                <th>Status</th>
+                                                <th style="width:8%"></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for item in groups['typ_dokladu_prijem'] %}
+                                            <tr>
+                                                <td><code>{{ item.kod }}</code></td>
+                                                <td>{{ item.nazov }}</td>
+                                                <td>{{ item.hodnota or '-' }}</td>
+                                                <td><small class="text-muted">{{ item.popis or '' }}</small></td>
+                                                <td>{{ format_datum(item.platnost_od) or '-' }}</td>
+                                                <td>
+                                                    {% if item.je_aktivny %}
+                                                    <span class="badge bg-success">Aktívny</span>
+                                                    {% else %}
+                                                    <span class="badge bg-secondary">Neaktívny</span>
+                                                    {% endif %}
+                                                </td>
+                                                <td class="text-center">
+                                                    <button type="button" class="btn btn-sm btn-outline-primary"
+                                                            data-bs-toggle="modal" data-bs-target="#editModal{{ item.id }}"
+                                                            title="Upraviť">
+                                                        <i class="bi bi-pencil"></i>
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
                                 </div>
-                                <div class="modal-footer">
-                                    <button type="button" class="btn btn-secondary" onclick="document.getElementById('editModal{{ item.id }}').style.display='none'; document.getElementById('editModal{{ item.id }}').classList.remove('show');">Zrušiť</button>
-                                    <button type="submit" class="btn btn-primary">Uložiť</button>
+                                {% else %}
+                                <div class="alert alert-info">Žiadne globálne typy dokladov pre príjem.</div>
+                                {% endif %}
+                            </div>
+                            <div class="tab-pane fade" id="typy_dokladov_vydavok" role="tabpanel">
+                                {% if groups.get('typ_dokladu_vydavok') %}
+                                <div class="table-responsive">
+                                    <table class="table table-bordered table-sm">
+                                        <thead class="table-light">
+                                            <tr>
+                                                <th>Kód</th>
+                                                <th>Názov</th>
+                                                <th>Hodnota</th>
+                                                <th>Popis</th>
+                                                <th>Platnosť od</th>
+                                                <th>Status</th>
+                                                <th style="width:8%"></th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {% for item in groups['typ_dokladu_vydavok'] %}
+                                            <tr>
+                                                <td><code>{{ item.kod }}</code></td>
+                                                <td>{{ item.nazov }}</td>
+                                                <td>{{ item.hodnota or '-' }}</td>
+                                                <td><small class="text-muted">{{ item.popis or '' }}</small></td>
+                                                <td>{{ format_datum(item.platnost_od) or '-' }}</td>
+                                                <td>
+                                                    {% if item.je_aktivny %}
+                                                    <span class="badge bg-success">Aktívny</span>
+                                                    {% else %}
+                                                    <span class="badge bg-secondary">Neaktívny</span>
+                                                    {% endif %}
+                                                </td>
+                                                <td class="text-center">
+                                                    <button type="button" class="btn btn-sm btn-outline-primary"
+                                                            data-bs-toggle="modal" data-bs-target="#editModal{{ item.id }}"
+                                                            title="Upraviť">
+                                                        <i class="bi bi-pencil"></i>
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        </tbody>
+                                    </table>
                                 </div>
-                            </form>
+                                {% else %}
+                                <div class="alert alert-info">Žiadne globálne typy dokladov pre výdavok.</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Šablóny -->
+                    <div class="tab-pane fade" id="sablony" role="tabpanel">
+                        <p class="text-muted">Spravujte preddefinované položky dokladov pre rýchle vypĺňanie.</p>
+
+                        <form method="post" action="{{ url_for('global_sablony_pridat') }}" class="mb-4">
+                            <div class="row">
+                                <div class="col-md-3 mb-2">
+                                    <input type="text" name="nazov" class="form-control" placeholder="Názov šablóny *" required>
+                                </div>
+                                <div class="col-md-2 mb-2">
+                                    <select name="typ_dokladu" class="form-select" required>
+                                        <option value="">Typ dokladu *</option>
+                                        <option value="prijem">Príjem</option>
+                                        <option value="vydavok">Výdavok</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-3 mb-2">
+                                    <input type="text" name="nazov_polozky" class="form-control" placeholder="Názov položky">
+                                </div>
+                                <div class="col-md-2 mb-2">
+                                    <input type="number" name="mnozstvo" class="form-control" placeholder="Množstvo" value="1" min="0" step="0.01">
+                                </div>
+                                <div class="col-md-2 mb-2">
+                                    <select name="jednotka" class="form-select">
+                                        <option value="ks">ks</option>
+                                        {% for j in jednotky %}
+                                        <option value="{{ j.skratka }}">{{ j.skratka }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="row">
+                                <div class="col-md-3 mb-2">
+                                    <input type="number" name="jednotkova_cena_bez_dph" class="form-control" placeholder="Cena bez DPH" value="0" min="0" step="0.01">
+                                </div>
+                                <div class="col-md-2 mb-2">
+                                    <select name="sadzba_dph" class="form-select">
+                                        <option value="23" selected>23%</option>
+                                        <option value="19">19%</option>
+                                        <option value="5">5%</option>
+                                        <option value="0">0%</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4 mb-2">
+                                    <input type="text" name="poznamka" class="form-control" placeholder="Poznámka">
+                                </div>
+                                <div class="col-md-3 mb-2">
+                                    <button type="submit" class="btn btn-success w-100">
+                                        <i class="bi bi-plus-lg"></i> Pridať šablónu
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover">
+                                <thead class="table-light">
+                                    <tr><th>Názov</th><th>Typ</th><th>Položka</th><th>Množ.</th><th>Jedn.</th><th>Cena</th><th>DPH</th><th class="text-end" style="width:120px">Akcie</th></tr>
+                                </thead>
+                                <tbody>
+                                    {% for s in sablony %}
+                                    <tr>
+                                        <td>{{ s.nazov }}</td>
+                                        <td>
+                                            {% if s.typ_dokladu == 'prijem' %}
+                                            <span class="badge bg-success">Príjem</span>
+                                            {% else %}
+                                            <span class="badge bg-danger">Výdavok</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ s.nazov_polozky or '-' }}</td>
+                                        <td>{{ s.mnozstvo }}</td>
+                                        <td>{{ s.jednotka }}</td>
+                                        <td>{{ "%.2f"|format(s.jednotkova_cena_bez_dph) }} €</td>
+                                        <td>{{ s.sadzba_dph }}%</td>
+                                        <td class="text-end">
+                                            <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#upravitGlobalSablonuModal{{ s.id }}">
+                                                <i class="bi bi-pencil"></i>
+                                            </button>
+                                            <a href="{{ url_for('global_sablony_zmazat', id=s.id) }}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Naozaj zmazať túto šablónu?')">
+                                                <i class="bi bi-trash"></i>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                    {% else %}
+                                    <tr><td colspan="8" class="text-center text-muted">Žiadne globálne šablóny</td></tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Jednotky -->
+                    <div class="tab-pane fade" id="jednotky" role="tabpanel">
+                        <p class="text-muted">Spravujte zoznam jednotiek merania používaných pri položkách dokladov.</p>
+
+                        <form method="post" action="{{ url_for('jednotky_pridat') }}" class="mb-4">
+                            <div class="row">
+                                <div class="col-md-5 mb-2">
+                                    <input type="text" name="nazov" class="form-control" placeholder="Názov jednotky (napr. Kilogram)" required>
+                                </div>
+                                <div class="col-md-4 mb-2">
+                                    <input type="text" name="skratka" class="form-control" placeholder="Skratka (napr. kg)" required>
+                                </div>
+                                <div class="col-md-3 mb-2">
+                                    <button type="submit" class="btn btn-success w-100">
+                                        <i class="bi bi-plus-lg"></i> Pridať
+                                    </button>
+                                </div>
+                            </div>
+                        </form>
+
+                        <div class="table-responsive">
+                            <table class="table table-striped table-hover">
+                                <thead class="table-light">
+                                    <tr><th>Názov</th><th>Skratka</th><th class="text-end" style="width:120px">Akcie</th></tr>
+                                </thead>
+                                <tbody>
+                                    {% for j in jednotky %}
+                                    <tr>
+                                        <td>{{ j.nazov }}</td>
+                                        <td>{{ j.skratka }}</td>
+                                        <td class="text-end">
+                                            <button type="button" class="btn btn-sm btn-outline-primary" data-bs-toggle="modal" data-bs-target="#upravitJednotkuModal{{ j.id }}">
+                                                <i class="bi bi-pencil"></i>
+                                            </button>
+                                            <a href="{{ url_for('jednotky_zmazat', id=j.id) }}" class="btn btn-sm btn-outline-danger" onclick="return confirm('Naozaj zmazať túto jednotku?')">
+                                                <i class="bi bi-trash"></i>
+                                            </a>
+                                        </td>
+                                    </tr>
+                                    {% else %}
+                                    <tr><td colspan="3" class="text-center text-muted">Žiadne jednotky</td></tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Číselné rady -->
+                    <div class="tab-pane fade" id="cisleniky" role="tabpanel">
+                        <div class="alert alert-info mb-3">
+                            <i class="bi bi-info-circle"></i>
+                            <strong>Číselné rady</strong> sú špecifické pre každú agendu (firmu).
+                            Globálne číselné rady nie sú dostupné — každá agenda si spravuje vlastné číslovanie dokladov.
+                        </div>
+                        <div class="text-center py-5">
+                            <i class="bi bi-list-ol fs-1 text-muted"></i><br>
+                            <p class="text-muted">Číselné rady spravujte v <a href="{{ url_for('ciselniky') }}">Nastaveniach agendy → Číselné rady</a>.</p>
                         </div>
                     </div>
                 </div>
-                {% endfor %}
-                {% endfor %}
             </div>
         </div>
     </div>
 </div>
+
+<script>
+function nacitatBankyApi() {
+    if (!confirm('Načítať aktuálny zoznam bánk z externého API?\n\nUpozornenie: Táto funkcia vyžaduje API kľúč. Bez kľúča sa použije lokálny zoznam.')) {
+        return;
+    }
+    fetch('/api/nacitat-banky', {method: 'POST'})
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                alert('Banky boli aktualizované: ' + data.message);
+                location.reload();
+            } else {
+                alert('Chyba: ' + data.error);
+            }
+        })
+        .catch(err => alert('Chyba pri načítaní: ' + err.message));
+}
+</script>
+
+<!-- Modálne okná pre úpravu globálnych šablón -->
+{% for s in sablony %}
+<div class="modal fade" id="upravitGlobalSablonuModal{{ s.id }}" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Upraviť globálnu šablónu</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="{{ url_for('global_sablony_upravit', id=s.id) }}">
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Názov šablóny</label>
+                            <input type="text" name="nazov" class="form-control" value="{{ s.nazov }}" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Typ dokladu</label>
+                            <select name="typ_dokladu" class="form-select" required>
+                                <option value="prijem" {% if s.typ_dokladu == 'prijem' %}selected{% endif %}>Príjem</option>
+                                <option value="vydavok" {% if s.typ_dokladu == 'vydavok' %}selected{% endif %}>Výdavok</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Názov položky</label>
+                            <input type="text" name="nazov_polozky" class="form-control" value="{{ s.nazov_polozky or '' }}">
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label">Množstvo</label>
+                            <input type="number" name="mnozstvo" class="form-control" value="{{ s.mnozstvo }}" min="0" step="0.01">
+                        </div>
+                        <div class="col-md-3 mb-3">
+                            <label class="form-label">Jednotka</label>
+                            <select name="jednotka" class="form-select">
+                                <option value="ks" {% if s.jednotka == 'ks' %}selected{% endif %}>ks</option>
+                                {% for j in jednotky %}
+                                <option value="{{ j.skratka }}" {% if s.jednotka == j.skratka %}selected{% endif %}>{{ j.skratka }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Cena bez DPH</label>
+                            <input type="number" name="jednotkova_cena_bez_dph" class="form-control" value="{{ s.jednotkova_cena_bez_dph }}" min="0" step="0.01">
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Sadzba DPH</label>
+                            <select name="sadzba_dph" class="form-select">
+                                <option value="23" {% if s.sadzba_dph == '23' %}selected{% endif %}>23%</option>
+                                <option value="19" {% if s.sadzba_dph == '19' %}selected{% endif %}>19%</option>
+                                <option value="5" {% if s.sadzba_dph == '5' %}selected{% endif %}>5%</option>
+                                <option value="0" {% if s.sadzba_dph == '0' %}selected{% endif %}>0%</option>
+                            </select>
+                        </div>
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Poznámka</label>
+                            <input type="text" name="poznamka" class="form-control" value="{{ s.poznamka or '' }}">
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Zrušiť</button>
+                    <button type="submit" class="btn btn-primary">Uložiť</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
+<!-- Modálne okná pre úpravu jednotiek -->
+{% for j in jednotky %}
+<div class="modal fade" id="upravitJednotkuModal{{ j.id }}" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Upraviť jednotku</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <form method="post" action="{{ url_for('jednotky_upravit', id=j.id) }}">
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <label class="form-label">Názov</label>
+                        <input type="text" name="nazov" class="form-control" value="{{ j.nazov }}" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Skratka</label>
+                        <input type="text" name="skratka" class="form-control" value="{{ j.skratka }}" required>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Zrušiť</button>
+                    <button type="submit" class="btn btn-primary">Uložiť</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endfor %}
+
 {% endblock %}

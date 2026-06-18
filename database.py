@@ -24,8 +24,12 @@ def get_db():
 
 
 def _add_column_if_not_exists(tabulka, stlpec, typ):
-    """Bezpečne pridá stĺpec ak ešte neexistuje."""
+    """Bezpečne pridá stĺpec ak ešte neexistuje. Ak tabuľka neexistuje, ticho vráti."""
     db = get_db()
+    cursor = db.execute("SELECT name FROM sqlite_master WHERE type='table' AND name=?", (tabulka,))
+    if not cursor.fetchone():
+        db.close()
+        return
     cursor = db.execute(f"PRAGMA table_info({tabulka})")
     columns = [row['name'] for row in cursor.fetchall()]
     if stlpec not in columns:
@@ -46,6 +50,13 @@ def init_db():
     _add_column_if_not_exists('vydavky', 'sadzba_dph_znizena', 'REAL')
     _add_column_if_not_exists('vydavky', 'sadzba_dph_super_znizena', 'REAL')
     _add_column_if_not_exists('nastavenia', 'mod', "TEXT DEFAULT 'zjednoduseny'")
+    _add_column_if_not_exists('nastavenia', 'swift', 'TEXT')
+    _add_column_if_not_exists('nastavenia', 'banka', 'TEXT')
+    _add_column_if_not_exists('nastavenia', 'cislo_uctu', 'TEXT')
+    _add_column_if_not_exists('nastavenia', 'predcislie', 'TEXT')
+    _add_column_if_not_exists('adresar_bankove_ucty', 'cislo_uctu', 'TEXT')
+    _add_column_if_not_exists('adresar_bankove_ucty', 'predcislie', 'TEXT')
+    _add_column_if_not_exists('system_catalog', 'swift', 'TEXT')
     
     conn = get_db()
     cursor = conn.cursor()
@@ -396,6 +407,8 @@ def init_db():
             bankovy_ucet TEXT,
             iban TEXT,
             swift TEXT,
+            cislo_uctu TEXT,
+            predcislie TEXT,
             mena TEXT DEFAULT 'EUR',
             je_aktivny BOOLEAN DEFAULT 1,
             created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -588,6 +601,20 @@ def init_db():
     cursor.execute("SELECT COUNT(*) FROM zobrazenie")
     if cursor.fetchone()[0] == 0:
         cursor.execute("INSERT INTO zobrazenie (tema, hustota) VALUES ('light', 'normal')")
+
+    # Agenda-špecifické typy dokladov (prepisujú globálne)
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS agenda_typy_dokladov (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            typ TEXT NOT NULL,
+            kod TEXT NOT NULL,
+            nazov TEXT NOT NULL,
+            popis TEXT,
+            je_aktivny BOOLEAN DEFAULT 1,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(typ, kod)
+        )
+    ''')
 
     conn.commit()
     conn.close()
@@ -809,6 +836,228 @@ def zmazat_sablonu(id):
     """Označí šablónu ako neaktívnu (soft delete)."""
     db = get_db()
     db.execute('UPDATE sablony_poloziek SET je_aktivny = 0 WHERE id = ?', (id,))
+    db.commit()
+    db.close()
+
+
+# ==================== GLOBÁLNE ŠABLÓNY (v hlavnej DB) ====================
+
+def get_global_sablony(typ_dokladu=None):
+    """Vráti globálne šablóny z hlavnej DB."""
+    db = get_db()
+    if typ_dokladu:
+        sablony = db.execute(
+            'SELECT * FROM sablony_poloziek WHERE je_aktivny = 1 AND typ_dokladu = ? ORDER BY nazov',
+            (typ_dokladu,)
+        ).fetchall()
+    else:
+        sablony = db.execute('SELECT * FROM sablony_poloziek WHERE je_aktivny = 1 ORDER BY nazov').fetchall()
+    db.close()
+    return sablony
+
+
+def get_global_sablona(id):
+    """Vráti globálnu šablónu podľa ID."""
+    db = get_db()
+    sablona = db.execute('SELECT * FROM sablony_poloziek WHERE id = ?', (id,)).fetchone()
+    db.close()
+    return sablona
+
+
+def pridat_global_sablonu(nazov, typ_dokladu, popis='', nazov_polozky='', poznamka='', mnozstvo=1, jednotka='ks', jednotkova_cena_bez_dph=0, sadzba_dph='23'):
+    """Pridá novú globálnu šablónu do hlavnej DB."""
+    db = get_db()
+    try:
+        db.execute('''
+            INSERT INTO sablony_poloziek
+            (nazov, typ_dokladu, popis, nazov_polozky, poznamka, mnozstvo, jednotka, jednotkova_cena_bez_dph, sadzba_dph)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (nazov, typ_dokladu, popis, nazov_polozky, poznamka, mnozstvo, jednotka, jednotkova_cena_bez_dph, sadzba_dph))
+        db.commit()
+        db.close()
+        return True, None
+    except sqlite3.IntegrityError:
+        db.close()
+        return False, 'Šablóna s týmto názvom už existuje'
+
+
+def upravit_global_sablonu(id, nazov, typ_dokladu, popis='', nazov_polozky='', poznamka='', mnozstvo=1, jednotka='ks', jednotkova_cena_bez_dph=0, sadzba_dph='23'):
+    """Upraví existujúcu globálnu šablónu v hlavnej DB."""
+    db = get_db()
+    try:
+        db.execute('''
+            UPDATE sablony_poloziek SET
+                nazov = ?, typ_dokladu = ?, popis = ?, nazov_polozky = ?, poznamka = ?,
+                mnozstvo = ?, jednotka = ?, jednotkova_cena_bez_dph = ?, sadzba_dph = ?
+            WHERE id = ?
+        ''', (nazov, typ_dokladu, popis, nazov_polozky, poznamka, mnozstvo, jednotka, jednotkova_cena_bez_dph, sadzba_dph, id))
+        db.commit()
+        db.close()
+        return True, None
+    except sqlite3.IntegrityError:
+        db.close()
+        return False, 'Šablóna s týmto názvom už existuje'
+
+
+def zmazat_global_sablonu(id):
+    """Označí globálnu šablónu ako neaktívnu (soft delete)."""
+    db = get_db()
+    db.execute('UPDATE sablony_poloziek SET je_aktivny = 0 WHERE id = ?', (id,))
+    db.commit()
+    db.close()
+
+
+# ==================== FUNKCIE PRE ADRESÁR (adresy, kontakty, banky, poznámky) ====================
+
+def get_adresar_dorucovacie_adresy(kontakt_id):
+    """Vráti doručovacie adresy kontaktu."""
+    db = get_db()
+    items = db.execute(
+        'SELECT * FROM adresar_dorucovacie_adresy WHERE kontakt_id = ? ORDER BY je_aktivny DESC, nazov',
+        (kontakt_id,)
+    ).fetchall()
+    db.close()
+    return items
+
+def pridat_adresar_adresu(kontakt_id, nazov, ulica, cislo, psc, mesto, stat='Slovensko'):
+    """Pridá doručovaciu adresu kontaktu."""
+    db = get_db()
+    db.execute('''
+        INSERT INTO adresar_dorucovacie_adresy (kontakt_id, nazov, ulica, cislo, psc, mesto, stat)
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+    ''', (kontakt_id, nazov, ulica, cislo, psc, mesto, stat))
+    db.commit()
+    db.close()
+
+def upravit_adresar_adresu(id, nazov, ulica, cislo, psc, mesto, stat, je_aktivny):
+    """Upraví doručovaciu adresu."""
+    db = get_db()
+    db.execute('''
+        UPDATE adresar_dorucovacie_adresy SET
+            nazov = ?, ulica = ?, cislo = ?, psc = ?, mesto = ?, stat = ?, je_aktivny = ?
+        WHERE id = ?
+    ''', (nazov, ulica, cislo, psc, mesto, stat, je_aktivny, id))
+    db.commit()
+    db.close()
+
+def zmazat_adresar_adresu(id):
+    """Označí adresu ako neaktívnu."""
+    db = get_db()
+    db.execute('UPDATE adresar_dorucovacie_adresy SET je_aktivny = 0 WHERE id = ?', (id,))
+    db.commit()
+    db.close()
+
+def get_adresar_kontakty(kontakt_id):
+    """Vráti kontaktné osoby kontaktu."""
+    db = get_db()
+    items = db.execute(
+        'SELECT * FROM adresar_kontakty WHERE kontakt_id = ? ORDER BY je_aktivny DESC, meno',
+        (kontakt_id,)
+    ).fetchall()
+    db.close()
+    return items
+
+def pridat_adresar_kontakt(kontakt_id, meno, telefon, email, poznamka=''):
+    """Pridá kontaktnú osobu."""
+    db = get_db()
+    db.execute('''
+        INSERT INTO adresar_kontakty (kontakt_id, meno, telefon, email, poznamka)
+        VALUES (?, ?, ?, ?, ?)
+    ''', (kontakt_id, meno, telefon, email, poznamka))
+    db.commit()
+    db.close()
+
+def upravit_adresar_kontakt(id, meno, telefon, email, poznamka, je_aktivny):
+    """Upraví kontaktnú osobu."""
+    db = get_db()
+    db.execute('''
+        UPDATE adresar_kontakty SET
+            meno = ?, telefon = ?, email = ?, poznamka = ?, je_aktivny = ?
+        WHERE id = ?
+    ''', (meno, telefon, email, poznamka, je_aktivny, id))
+    db.commit()
+    db.close()
+
+def zmazat_adresar_kontakt(id):
+    """Označí kontaktnú osobu ako neaktívnu."""
+    db = get_db()
+    db.execute('UPDATE adresar_kontakty SET je_aktivny = 0 WHERE id = ?', (id,))
+    db.commit()
+    db.close()
+
+def get_adresar_bankove_ucty(kontakt_id):
+    """Vráti bankové účty kontaktu."""
+    db = get_db()
+    items = db.execute(
+        'SELECT * FROM adresar_bankove_ucty WHERE kontakt_id = ? ORDER BY je_aktivny DESC, nazov',
+        (kontakt_id,)
+    ).fetchall()
+    db.close()
+    return items
+
+def pridat_adresar_bankovy_ucet(kontakt_id, nazov, banka, predcislie, cislo_uctu, bankovy_ucet, iban, swift, mena='EUR'):
+    """Pridá bankový účet kontaktu."""
+    db = get_db()
+    db.execute('''
+        INSERT INTO adresar_bankove_ucty
+        (kontakt_id, nazov, banka, predcislie, cislo_uctu, bankovy_ucet, iban, swift, mena)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+    ''', (kontakt_id, nazov, banka, predcislie, cislo_uctu, bankovy_ucet, iban, swift, mena))
+    db.commit()
+    db.close()
+
+def upravit_adresar_bankovy_ucet(id, nazov, banka, predcislie, cislo_uctu, bankovy_ucet, iban, swift, mena, je_aktivny):
+    """Upraví bankový účet."""
+    db = get_db()
+    db.execute('''
+        UPDATE adresar_bankove_ucty SET
+            nazov = ?, banka = ?, predcislie = ?, cislo_uctu = ?, bankovy_ucet = ?,
+            iban = ?, swift = ?, mena = ?, je_aktivny = ?
+        WHERE id = ?
+    ''', (nazov, banka, predcislie, cislo_uctu, bankovy_ucet, iban, swift, mena, je_aktivny, id))
+    db.commit()
+    db.close()
+
+def zmazat_adresar_bankovy_ucet(id):
+    """Označí bankový účet ako neaktívny."""
+    db = get_db()
+    db.execute('UPDATE adresar_bankove_ucty SET je_aktivny = 0 WHERE id = ?', (id,))
+    db.commit()
+    db.close()
+
+def get_adresar_poznamky(kontakt_id):
+    """Vráti poznámky kontaktu."""
+    db = get_db()
+    items = db.execute(
+        'SELECT * FROM adresar_poznamky WHERE kontakt_id = ? ORDER BY je_aktivny DESC, created_at DESC',
+        (kontakt_id,)
+    ).fetchall()
+    db.close()
+    return items
+
+def pridat_adresar_poznamku(kontakt_id, text):
+    """Pridá poznámku kontaktu."""
+    db = get_db()
+    db.execute('''
+        INSERT INTO adresar_poznamky (kontakt_id, text)
+        VALUES (?, ?)
+    ''', (kontakt_id, text))
+    db.commit()
+    db.close()
+
+def upravit_adresar_poznamku(id, text, je_aktivny):
+    """Upraví poznámku."""
+    db = get_db()
+    db.execute('''
+        UPDATE adresar_poznamky SET text = ?, je_aktivny = ? WHERE id = ?
+    ''', (text, je_aktivny, id))
+    db.commit()
+    db.close()
+
+def zmazat_adresar_poznamku(id):
+    """Označí poznámku ako neaktívnu."""
+    db = get_db()
+    db.execute('UPDATE adresar_poznamky SET je_aktivny = 0 WHERE id = ?', (id,))
     db.commit()
     db.close()
 
@@ -1035,13 +1284,26 @@ def get_system_catalog(kategoria=None, je_aktivny=True):
     if kategoria:
         query += ' AND kategoria = ?'
         params.append(kategoria)
-    if je_aktivny:
-        query += ' AND je_aktivny = 1'
+    if je_aktivny is not None:
+        query += ' AND je_aktivny = ?'
+        params.append(1 if je_aktivny else 0)
     query += ' ORDER BY kategoria, nazov'
     cursor = db.execute(query, params)
     items = cursor.fetchall()
     db.close()
     return items
+
+
+def get_banky(je_aktivny=None):
+    """Vráti zoznam bánk zo systémového katalógu."""
+    return get_system_catalog('banka', je_aktivny)
+
+
+def get_bank_swift(kod_banky):
+    """Vráti SWIFT kód banky podľa kódu."""
+    item = get_system_catalog_item('banka', kod_banky)
+    return item['hodnota'] if item else None
+
 
 def get_system_catalog_item(kategoria, kod):
     """Vráti konkrétnu položku katalógu."""
@@ -1062,6 +1324,85 @@ def get_typy_dokladov_prijem():
 def get_typy_dokladov_vydavok():
     """Vráti typy dokladov pre výdavok."""
     return get_system_catalog('typ_dokladu_vydavok')
+
+
+# ==================== AGENDA-ŠPECIFICKÉ TYPY DOKLADOV ====================
+
+def get_agenda_typy_dokladov(typ):
+    """Vráti agenda-špecifické typy dokladov pre daný typ (prijem/vydavok).
+    Ak existujú, prepisujú globálne nastavenia."""
+    db = get_db()
+    cursor = db.execute(
+        "SELECT * FROM agenda_typy_dokladov WHERE typ = ? AND je_aktivny = 1 ORDER BY nazov",
+        (typ,)
+    )
+    items = cursor.fetchall()
+    db.close()
+    return items
+
+
+def get_agenda_typ_dokladu(typ, kod):
+    """Vráti konkrétny agenda-špecifický typ dokladu."""
+    db = get_db()
+    cursor = db.execute(
+        "SELECT * FROM agenda_typy_dokladov WHERE typ = ? AND kod = ?",
+        (typ, kod)
+    )
+    item = cursor.fetchone()
+    db.close()
+    return item
+
+
+def pridat_agenda_typ_dokladu(typ, kod, nazov, popis=''):
+    """Pridá alebo aktualizuje agenda-špecifický typ dokladu."""
+    db = get_db()
+    db.execute('''
+        INSERT INTO agenda_typy_dokladov (typ, kod, nazov, popis, je_aktivny)
+        VALUES (?, ?, ?, ?, 1)
+        ON CONFLICT(typ, kod) DO UPDATE SET nazov = excluded.nazov, popis = excluded.popis, je_aktivny = 1
+    ''', (typ, kod, nazov, popis))
+    db.commit()
+    db.close()
+
+
+def upravit_agenda_typ_dokladu(id, nazov, popis, je_aktivny):
+    """Upraví agenda-špecifický typ dokladu."""
+    db = get_db()
+    db.execute('''
+        UPDATE agenda_typy_dokladov
+        SET nazov = ?, popis = ?, je_aktivny = ?
+        WHERE id = ?
+    ''', (nazov, popis, 1 if je_aktivny else 0, id))
+    db.commit()
+    db.close()
+
+
+def zmazat_agenda_typ_dokladu(id):
+    """Zmaže agenda-špecifický typ dokladu."""
+    db = get_db()
+    db.execute("DELETE FROM agenda_typy_dokladov WHERE id = ?", (id,))
+    db.commit()
+    db.close()
+
+
+def get_vsetky_typy_dokladov(typ):
+    """Vráti zlúčený zoznam typov dokladov — agenda-špecifické majú prioritu nad globálnymi.
+    Používa sa vo formulároch pre výber typu dokladu."""
+    # Najprv načítaj globálne
+    globalne = get_system_catalog(f'typ_dokladu_{typ}')
+    # Potom agenda-špecifické
+    agenda = get_agenda_typy_dokladov(typ)
+    
+    # Vytvor slovník podľa kódu — agenda prepíše globálne
+    vysledok = {}
+    for g in globalne:
+        vysledok[g['kod']] = dict(g)
+    for a in agenda:
+        vysledok[a['kod']] = dict(a)
+    
+    # Vráť zoradené podľa názvu
+    return sorted(vysledok.values(), key=lambda x: x['nazov'])
+
 
 def get_legal_limit(kod):
     """Vráti hodnotu právneho limitu."""
@@ -1301,15 +1642,29 @@ def get_aktivna_agenda():
     return agenda
 
 
-def vytvorit_agendu(nazov, poznamka=''):
+def vytvorit_agendu(nazov, poznamka='', subor=None, cesta_k_db=None):
     """Vytvorí novú agendu (novú databázu)."""
     agendy_dir = get_agendy_dir()
-    subor = nazov.replace(' ', '_').replace('/', '_').replace('\\', '_') + '.db'
-    cesta = os.path.join(agendy_dir, subor)
+
+    # Ak je zadaná cesta k DB, použijeme ju
+    if cesta_k_db:
+        cesta = cesta_k_db
+        # Extrahuj názov súboru z cesty
+        subor = os.path.basename(cesta)
+    else:
+        # Použi zadaný názov súboru alebo vygeneruj z názvu agendy
+        if not subor:
+            subor = nazov.replace(' ', '_').replace('/', '_').replace('\\', '_') + '.db'
+        if not subor.endswith('.db'):
+            subor += '.db'
+        cesta = os.path.join(agendy_dir, subor)
 
     # Kontrola či už existuje
     if os.path.exists(cesta):
-        return None, 'Agenda s týmto názvom už existuje'
+        return None, 'Agenda s týmto názvom/súborom už existuje'
+
+    # Uisti sa že adresár existuje
+    os.makedirs(os.path.dirname(cesta), exist_ok=True)
 
     # Vytvoriť prázdnu databázu
     conn = sqlite3.connect(cesta)
@@ -1333,6 +1688,51 @@ def vytvorit_agendu(nazov, poznamka=''):
     set_db_path(cesta)
 
     return cesta, None
+
+
+def upravit_agendu(subor, nazov=None, poznamka=None, novy_subor=None):
+    """Upraví existujúcu agendu (názov, poznámka, prípadne názov súboru)."""
+    agendy_dir = get_agendy_dir()
+    cesta = os.path.join(agendy_dir, subor)
+
+    if not os.path.exists(cesta):
+        return False, 'Súbor agendy neexistuje'
+
+    set_db_path(DEFAULT_DB_PATH)
+    db = get_db()
+
+    # Získaj aktuálne hodnoty
+    agenda = db.execute('SELECT * FROM agendy WHERE subor = ?', (subor,)).fetchone()
+    if not agenda:
+        db.close()
+        return False, 'Agenda nebola nájdená v databáze'
+
+    aktualny_nazov = agenda['nazov']
+    aktualna_poznamka = agenda['poznamka']
+
+    # Použi nové hodnoty alebo ponechaj staré
+    novy_nazov = nazov if nazov is not None else aktualny_nazov
+    nova_poznamka = poznamka if poznamka is not None else aktualna_poznamka
+
+    # Ak sa mení názov súboru
+    if novy_subor and novy_subor != subor:
+        if not novy_subor.endswith('.db'):
+            novy_subor += '.db'
+        nova_cesta = os.path.join(agendy_dir, novy_subor)
+        if os.path.exists(nova_cesta):
+            db.close()
+            return False, 'Agenda s týmto názvom súboru už existuje'
+        # Premenovať súbor
+        os.rename(cesta, nova_cesta)
+        db.execute('UPDATE agendy SET subor = ? WHERE subor = ?', (novy_subor, subor))
+        subor = novy_subor
+
+    # Aktualizovať názov a poznámku
+    db.execute('UPDATE agendy SET nazov = ?, poznamka = ? WHERE subor = ?',
+               (novy_nazov, nova_poznamka, subor))
+    db.commit()
+    db.close()
+    return True, None
 
 
 def otvorit_agendu(subor):

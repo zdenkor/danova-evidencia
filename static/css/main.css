@@ -202,6 +202,35 @@ code, pre, .code {
     background-color: rgba(255, 255, 255, 0.12);
 }
 
+/* === BOOTSTRAP TABS — oprava farieb, aby neboli biele na bielom === */
+.nav-tabs .nav-link {
+    color: var(--text-primary) !important;
+    background-color: transparent;
+    border-bottom: 2px solid transparent;
+}
+
+.nav-tabs .nav-link:hover {
+    color: var(--text-link) !important;
+    background-color: var(--bg-hover);
+    border-color: var(--border-color) var(--border-color) transparent;
+}
+
+.nav-tabs .nav-link.active {
+    color: var(--primary-color) !important;
+    background-color: var(--bg-card) !important;
+    border-color: var(--border-color) var(--border-color) var(--bg-card);
+    border-bottom: 2px solid var(--primary-color);
+}
+
+[data-theme="dark"] .nav-tabs .nav-link {
+    color: var(--text-primary) !important;
+}
+
+[data-theme="dark"] .nav-tabs .nav-link.active {
+    color: var(--primary-color) !important;
+    background-color: var(--bg-card) !important;
+}
+
 .nav-link .sidebar-icon {
     font-size: 1.1rem;
     opacity: 0.9;
